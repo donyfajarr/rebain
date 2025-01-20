@@ -1,0 +1,74 @@
+name: merula
+description: A new Flutter project.
+
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.1.3 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.2
+  tflite_flutter: ^0.11.0
+  collection: ^1.16.0
+  camera: ^0.8.1+3
+  path_provider: ^2.0.1
+  build_runner: ^2.4.6
+  image: ^3.0.2
+  image_picker : ^1.0.5
+  logger: ^2.1.0
+
+  tflite_flutter_helper:
+    git:
+      url: https://github.com/donyfajarr/tflite_flutter_helper.git
+      ref: d4c0d072b7b8ae7bf6e81ea84cdbae778a5162ea
+  google_sign_in: ^6.2.1
+  firebase_auth: ^5.3.1
+  fluttertoast: ^8.2.8
+  cloud_firestore: ^5.4.4
+  firebase_core: ^3.6.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^2.0.0
+  very_good_analysis: ^5.1.0
+
+flutter:
+  uses-material-design: true
+
+  # To add assets to your application, add an assets section, like this:
+  assets:
+    - assets/
+    - assets/movenet.tflite
+
+  # An image asset can refer to one or more resolution-specific "variants", see
+  # https://flutter.dev/assets-and-images/#resolution-aware
+
+  # For details regarding adding assets from package dependencies, see
+  # https://flutter.dev/assets-and-images/#from-packages
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font. For
+  # example:
+  fonts:  
+    - family: LilitaOne
+      fonts:
+        - asset: assets/font_logo.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+  #   - family: Trajan Pro
+  #     fonts:
+  #       - asset: fonts/TrajanPro.ttf
+  #       - asset: fonts/TrajanPro_Bold.ttf
+  #         weight: 700
+  #
+  # For details regarding fonts from package dependencies,
+  # see https://flutter.dev/custom-fonts/#from-packages
