@@ -3,22 +3,18 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:image/image.dart' as image_lib;
 import 'classifier.dart'; // Import your classifier
-import 'dart:typed_data';
-import 'dart:math';
-// import 'package:flutter/material.dart';
+
 class ImagePickerScreen extends StatefulWidget {
   @override
   _ImagePickerScreenState createState() => _ImagePickerScreenState();
 }
 
 class _ImagePickerScreenState extends State<ImagePickerScreen> {
-  File? _image;
-  Image? _imagewidget;
-
+  List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
   late MoveNetClassifier _moveNetClassifier;
-  bool _isModelReady = false; // Track model loading state
-  List<Keypoint> _keypoints = []; // Updated to store keypoints directly
+  bool _isModelReady = false;
+  Map<File, List<Keypoint>> _keypointsMap = {}; // Map to store keypoints for each image
 
   @override
   void initState() {
@@ -30,142 +26,104 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     _moveNetClassifier = MoveNetClassifier();
     try {
       print("Loading model...");
-      await _moveNetClassifier.loadModel(); // Wait until the model is loaded
+      await _moveNetClassifier.loadModel();
       setState(() {
-        _isModelReady = true; // Once the model is loaded, set it to ready
+        _isModelReady = true;
       });
-      if (_isModelReady) {
-        print("Model is ready for use.");
-      } else {
-        print("Model initialization failed.");
-      }
+      print("Model is ready for use.");
     } catch (e) {
       print("Error initializing model: $e");
     }
   }
 
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await _picker.pickImage(source: source);
 
     if (pickedFile != null && _isModelReady) {
+      final image = File(pickedFile.path);
       setState(() {
-        _image = File(pickedFile.path);
+        _images.add(image);
       });
-      _predict(_image!);
+      await _predict(image);
     } else if (!_isModelReady) {
-      print("Model is not yet ready!");
+      print("Model is not ready yet!");
     } else {
       print("No image selected.");
     }
   }
 
   Future<void> _predict(File image) async {
-  
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
-    final rotateimage = image_lib.copyRotate(imageInput, 270);
-      final int originalWidth = imageInput.width;
+    final int originalWidth = imageInput.width;
     final int originalHeight = imageInput.height;
 
-    // List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(rotateimage);
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
 
-    final mappedKeypoints = mapKeypointsToOriginalImage(
-    keypoints: keypoints,
-    originalWidth: originalWidth,
-    originalHeight: originalHeight,
-    inputSize: 256, // Model input size
-  );
-
-    for (var keypoint in mappedKeypoints) {
-  print('Keypoint: (${keypoint.x}, ${keypoint.y}) with confidence: ${keypoint.confidence}');
-}
-
-    // print(mappedKeypoints[0].x);
-    // print(mappedKeypoints[0].y);
-
     setState(() {
-      _keypoints = mappedKeypoints;
+      _keypointsMap[image] = keypoints;
     });
   }
-
-  Future<void> _captureImageFromCamera() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
-
-    if (pickedFile != null && _isModelReady) {
-      setState(() {
-        _image = File(pickedFile.path);
-      });
-      _predict(_image!);
-    } else if (!_isModelReady) {
-      print("Model is not yet ready!");
-    } else {
-      print("No image captured.");
-    }
-  }
-
-List<Keypoint> mapKeypointsToOriginalImage({
-  required List<Keypoint> keypoints,
-  required int originalWidth,
-  required int originalHeight,
-  required int inputSize,
-}) {
-  return keypoints.map((keypoint) {
-    final x = keypoint.x * originalWidth;
-    final y = keypoint.y * originalHeight;
-    return Keypoint(x, y, keypoint.confidence);
-  }).toList();
-}
-
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Image Picker and MoveNet'),
+        title: Text('Multiple Image Picker and MoveNet'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_image == null)
-              Text('No image selected.')
-            else
-              Stack(
-                children: [
-                  Container(
-                    width: 256,
-                    height: 256,
-                    child: Image.file(_image!, fit: BoxFit.cover),
+      body: Column(
+        children: [
+          Expanded(
+            child: _images.isEmpty
+                ? Center(child: Text('No images selected or captured.'))
+                : ListView.builder(
+                    itemCount: _images.length,
+                    itemBuilder: (context, index) {
+                      final image = _images[index];
+                      final keypoints = _keypointsMap[image];
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          children: [
+                            Image.file(
+                              image,
+                              width: 256,
+                              height: 256,
+                              fit: BoxFit.cover,
+                            ),
+                            if (keypoints != null)
+                              CustomPaint(
+                                size: Size(256, 256),
+                                painter: KeypointsPainter(
+                                  keypoints,
+                                  image_lib.decodeImage(image.readAsBytesSync())!.width.toDouble(),
+                                  image_lib.decodeImage(image.readAsBytesSync())!.height.toDouble(),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  if (_keypoints.isNotEmpty)
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: KeypointsPainter(_keypoints,
-                        image_lib.decodeImage(_image!.readAsBytesSync())!.width.toDouble(),
-                        image_lib.decodeImage(_image!.readAsBytesSync())!.height.toDouble(),),
-                                              ),
-                    ),
-                ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: _isModelReady
+                    ? () => _pickImage(ImageSource.gallery)
+                    : null,
+                child: Text('Add from Gallery'),
               ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: _isModelReady ? _pickImage : null,
-                  child: Text('Pick from Gallery'),
-                ),
-                SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: _isModelReady ? _captureImageFromCamera : null,
-                  child: Text('Capture from Camera'),
-                ),
-              ],
-            ),
-            if (!_isModelReady) CircularProgressIndicator(), // Show loading indicator while model loads
-          ],
-        ),
+              SizedBox(width: 10),
+              ElevatedButton(
+                onPressed: _isModelReady
+                    ? () => _pickImage(ImageSource.camera)
+                    : null,
+                child: Text('Add from Camera'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -206,5 +164,3 @@ class KeypointsPainter extends CustomPainter {
     return true;
   }
 }
-
-
