@@ -117,7 +117,8 @@ class MoveNetClassifier {
   Future<void> loadModel() async {
     try {
       interpreter = await Interpreter.fromAsset(
-        'assets/movenetflt32.tflite',
+        // 'assets/movenetflt32.tflite',
+        'assets/movenetfix.tflite',
         options: _interpreterOptions,
       );
       print('Interpreter Created Successfully');
@@ -144,52 +145,134 @@ class MoveNetClassifier {
     }
   }
 
-Future<Float32List> _imageToByteListFloat32(
-    Image image, int inputSize, double mean, double std) async {
-  // Step 1: Calculate padding to make the image square
+
+Future<List<List<List<List<double>>>>> _imageToByteListFloat32(
+  Image image,
+  int inputSize,
+  double mean,
+  double std,
+) async {
+  // Step 1: Create a blank square canvas
   final int originalWidth = image.width;
   final int originalHeight = image.height;
-  
+
+  // Maintain aspect ratio and calculate scale
   final int padSize = max(originalWidth, originalHeight);
+  final double scale = inputSize / padSize;
+  final int newWidth = (originalWidth * scale).round();
+  final int newHeight = (originalHeight * scale).round();
 
-  // Create a blank square canvas
-  Image squareCanvas = Image(padSize, padSize);
-  squareCanvas = fill(squareCanvas, getColor(0, 0, 255)); // Fill with black or desired padding color
+  // Calculate padding
+  final int paddingX = inputSize - newWidth;
+  final int paddingY = inputSize - newHeight;
 
-  // Draw the original image centered on the square canvas
-  drawImage(
-    squareCanvas,
+  // Create and fill a square canvas
+  Image squareCanvas = Image(inputSize, inputSize);
+  squareCanvas = fill(squareCanvas, getColor(0, 0, 0)); // Fill with black
+
+  // Resize the original image
+  final Image resizedImage = copyResize(
     image,
-    dstX: (padSize - originalWidth) ~/ 2,
-    dstY: (padSize - originalHeight) ~/ 2,
+    width: newWidth,
+    height: newHeight,
+    interpolation: Interpolation.linear,
   );
 
-  // Step 2: Resize the padded square image to the input size (256x256)
-  final resizedImage = copyResize(squareCanvas, width: inputSize, height: inputSize);
+  // Draw the resized image onto the canvas
+  drawImage(
+    squareCanvas,
+    resizedImage,
+    dstX: paddingX ~/ 2,
+    dstY: paddingY ~/ 2,
+  );
 
-  // Step 3: Convert resized image into Float32 buffer
-  var convertedBytes = Float32List(1 * inputSize * inputSize * 3);
-  var buffer = Float32List.view(convertedBytes.buffer);
-  int pixelIndex = 0;
+  // Step 2: Convert to Float32 Tensor with normalization
+  var tensor = List.generate(
+    1,
+    (_) => List.generate(
+      inputSize,
+      (_) => List.generate(
+        inputSize,
+        (_) => List.generate(3, (_) => 0.0),
+      ),
+    ),
+  );
 
-  for (var i = 0; i < inputSize; i++) {
-    for (var j = 0; j < inputSize; j++) {
-      var pixel = resizedImage.getPixel(j, i);
+  for (int y = 0; y < inputSize; y++) {
+    for (int x = 0; x < inputSize; x++) {
+      final int pixel = squareCanvas.getPixel(x, y);
 
-      // Extract ARGB components
-      var r = (pixel >> 16) & 0xFF; // Red component
-      var g = (pixel >> 8) & 0xFF;  // Green component
-      var b = pixel & 0xFF;         // Blue component
+      // Extract RGB channels
+      final int r = (pixel >> 16) & 0xFF;
+      final int g = (pixel >> 8) & 0xFF;
+      final int b = pixel & 0xFF;
 
-      // Normalize and store values
-      buffer[pixelIndex++] = (r - mean) / std;
-      buffer[pixelIndex++] = (g - mean) / std;
-      buffer[pixelIndex++] = (b - mean) / std;
+      // Normalize and store in tensor
+      tensor[0][y][x][0] = (r - mean) / std; // R
+      tensor[0][y][x][1] = (g - mean) / std; // G
+      tensor[0][y][x][2] = (b - mean) / std; // B
     }
   }
 
-  // Step 4: Return the normalized buffer as Uint8List
-  return convertedBytes.buffer.asFloat32List();
+  return tensor;
+}
+
+Future<Uint8List> _imageToByteListUint8(
+    Image image, int inputSize) async {
+  // Step 1: Calculate resizing dimensions while maintaining aspect ratio
+  final int originalWidth = image.width;
+  final int originalHeight = image.height;
+
+  // Scale the image to fit within the input size
+  double scale = inputSize / max(originalWidth, originalHeight);
+  print('scale $scale');
+  int newWidth = (originalWidth * scale).round();
+  int newHeight = (originalHeight * scale).round();
+
+  print('new width $newWidth');
+  print('new Height $newHeight');
+
+  // Calculate padding
+  int paddingX = inputSize - newWidth;
+  int paddingY = inputSize - newHeight;
+  
+  print('padding x $paddingX');
+  print('padding y $paddingY');
+
+  // Create a blank square canvas
+  Image squareCanvas = Image(inputSize, inputSize);
+  squareCanvas = fill(squareCanvas, getColor(0, 0, 0)); // Fill with black
+
+  // Resize and draw the original image on the canvas
+  final Image resizedImage = copyResize(
+    image,
+    width: newWidth,
+    height: newHeight,
+    interpolation: Interpolation.linear,
+  );
+  drawImage(
+    squareCanvas,
+    resizedImage,
+    dstX: paddingX ~/ 2,
+    dstY: paddingY ~/ 2,
+  );
+
+  // Step 2: Create a Uint8List for the input tensor
+  Uint8List inputBuffer = Uint8List(inputSize * inputSize * 3);
+  int pixelIndex = 0;
+
+  for (int y = 0; y < inputSize; y++) {
+    for (int x = 0; x < inputSize; x++) {
+      final int pixel = squareCanvas.getPixel(x, y);
+
+      // Extract RGB channels
+      inputBuffer[pixelIndex++] = (pixel >> 16) & 0xFF; // R
+      inputBuffer[pixelIndex++] = (pixel >> 8) & 0xFF;  // G
+      inputBuffer[pixelIndex++] = pixel & 0xFF;         // B
+    }
+  }
+
+  return inputBuffer;
 }
 
 TensorImage getProcessedImage() {
@@ -211,42 +294,28 @@ Future<List<Keypoint>> processAndRunModel(Image imageFile) async {
 
   try {
     print("Processing image...");
-    // Preprocess the input image
-    // Image convertedImage;
-    // convertedImage = convertGalleryImageToRGB(imageFile);
-    // print(convertedImage);
-    // inputImage = TensorImage(TensorType.float32);
-    // inputImage.loadImage(convertedImage);
-    // print('a');
-    // // print(inputImage.getTensorBuffer().getBuffer());
-    // inputImage = getProcessedImage();
-    // print(inputImage.getWidth());
-    // // print(inputImage.;
-    // print(inputImage.getHeight());
-    // // print(inputImage.runtimeType);
-    // // final r = inputImage.buffer;
-    // // print(r.asFloat32List());
-    // // print(inputa);
-    // print('he');
-    // inputa.add(inputImage.getTensorBuffer().getBuffer());
-    // // inputa.add(inputImage.getTensorBuffer().getBuffer());
-    // print('sup');
-    // // inputs = [inputImage.buffer];
-    // Map<int, Object> outputs = {0: outputLocations.buffer};
-
 
     var width = imageFile.width;
     var height = imageFile.height;
     debugPrint('Width : $width x Height : $height');
-    // final inputBuffer =
-        await _imageToByteListFloat32(imageFile, 256, 127.5, 127.5);
-    interpreter.runForMultipleInputs(inputa, outputs);
-    // Initialize the output buffer
-    // _outputBuffer = TensorBuffer.createFixedSize(_outputShape, _outputType);
-    // Map<int, Object> outputs = {0: outputLocations.buffer};
-    // // Run inference
-    // print(inputBuffer);
-    // interpreter.run(inputBuffer, _outputBuffer.buffer);
+    print(_inputType);
+    final inputBuffer =
+        await _imageToByteListUint8(imageFile, 256);
+    // debugPrint('Width : $width x Height : $height');
+    // final InputBuffer.round
+    _outputBuffer = TensorBuffer.createFixedSize(_outputShape, _outputType);
+
+    // interpreter.runForMultipleInputs(inputBuffer, ou)
+    interpreter.run(inputBuffer, _outputBuffer.buffer);
+
+//     try {
+//   var outputs = List<double>.filled(1 * 17 * 3, 0);  // Adjust size based on your model's output
+//   interpreter.run(inputBuffer, outputs);
+  
+//   // Process outputs...
+// } catch (e) {
+//   print('Error running model: $e');
+// }
 
     // Get and print the results
     final outputData = _outputBuffer.getDoubleList();
@@ -270,13 +339,15 @@ List<Keypoint> parseKeypoints(List<double> modelOutput, double imageWidth, doubl
   List<Keypoint> keypoints = [];
   for (int i = 0; i < modelOutput.length; i += 3) {
     keypoints.add(Keypoint(
-      modelOutput[i] *256,   // Scale x-coordinate
-      modelOutput[i + 1] *256, // Scale y-coordinate
+      modelOutput[i+1],   // Scale x-coordinate
+      modelOutput[i], // Scale y-coordinate
       modelOutput[i + 2],           // Confidence
     ));
     
     // print(keypoints[i]);
   }
+  debugPrint('Image Width: $imageWidth, Image Height: $imageHeight');
+  
   for (var keypoint in keypoints) {
   print('Keypoint: (${keypoint.x}, ${keypoint.y}) with confidence: ${keypoint.confidence}');
 }

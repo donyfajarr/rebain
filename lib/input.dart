@@ -3,7 +3,6 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:image/image.dart' as image_lib;
 import 'classifier.dart'; // Import your classifier
-import 'keypoint_overlay.dart';
 import 'dart:typed_data';
 import 'dart:math';
 // import 'package:flutter/material.dart';
@@ -63,9 +62,11 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Future<void> _predict(File image) async {
   
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
+    final rotateimage = image_lib.copyRotate(imageInput, 270);
       final int originalWidth = imageInput.width;
     final int originalHeight = imageInput.height;
 
+    // List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(rotateimage);
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
 
     final mappedKeypoints = mapKeypointsToOriginalImage(
@@ -75,26 +76,42 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     inputSize: 256, // Model input size
   );
 
+    for (var keypoint in mappedKeypoints) {
+  print('Keypoint: (${keypoint.x}, ${keypoint.y}) with confidence: ${keypoint.confidence}');
+}
+
+    // print(mappedKeypoints[0].x);
+    // print(mappedKeypoints[0].y);
+
     setState(() {
       _keypoints = mappedKeypoints;
     });
   }
 
-  List<Keypoint> mapKeypointsToOriginalImage({
+  Future<void> _captureImageFromCamera() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
+
+    if (pickedFile != null && _isModelReady) {
+      setState(() {
+        _image = File(pickedFile.path);
+      });
+      _predict(_image!);
+    } else if (!_isModelReady) {
+      print("Model is not yet ready!");
+    } else {
+      print("No image captured.");
+    }
+  }
+
+List<Keypoint> mapKeypointsToOriginalImage({
   required List<Keypoint> keypoints,
   required int originalWidth,
   required int originalHeight,
   required int inputSize,
 }) {
-  final int padSize = max(originalWidth, originalHeight);
-  final double scale = padSize / inputSize;
-
-  final double xOffset = (padSize - originalWidth) / 2.0;
-  final double yOffset = (padSize - originalHeight) / 2.0;
-
   return keypoints.map((keypoint) {
-    final x = (keypoint.x * scale - xOffset);
-    final y = (keypoint.y * scale - yOffset);
+    final x = keypoint.x * originalWidth;
+    final y = keypoint.y * originalHeight;
     return Keypoint(x, y, keypoint.confidence);
   }).toList();
 }
@@ -132,12 +149,21 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ],
               ),
             SizedBox(height: 20),
-            _isModelReady
-                ? ElevatedButton(
-                    onPressed: _pickImage,
-                    child: Text('Pick Image'),
-                  )
-                : CircularProgressIndicator(), // Show loading indicator while model loads
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: _isModelReady ? _pickImage : null,
+                  child: Text('Pick from Gallery'),
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: _isModelReady ? _captureImageFromCamera : null,
+                  child: Text('Capture from Camera'),
+                ),
+              ],
+            ),
+            if (!_isModelReady) CircularProgressIndicator(), // Show loading indicator while model loads
           ],
         ),
       ),
@@ -155,26 +181,21 @@ class Keypoint {
 
 class KeypointsPainter extends CustomPainter {
   final List<Keypoint> keypoints;
-  final double imageWidth;
-  final double imageHeight;
+  final double originalWidth;
+  final double originalHeight;
 
-  KeypointsPainter(this.keypoints, this.imageWidth, this.imageHeight);
+  KeypointsPainter(this.keypoints, this.originalWidth, this.originalHeight);
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFFF0000) // Red color
+      ..color = Colors.red
       ..style = PaintingStyle.fill;
-    final scaleX = size.width / imageWidth;
-    final scaleY = size.height / imageHeight;
-
-    print(size.width);
-    debugPrint('image $imageWidth');
 
     for (var keypoint in keypoints) {
-      if (keypoint.confidence > 0) { // Draw keypoints with confidence > 0.5
-        final dx = keypoint.x * scaleX;
-        final dy = keypoint.y * scaleY;
+      if (keypoint.confidence > 0.4) {
+        final dx = (keypoint.x / originalWidth) * size.width;
+        final dy = (keypoint.y / originalHeight) * size.height;
         canvas.drawCircle(Offset(dx, dy), 5.0, paint);
       }
     }
@@ -185,4 +206,5 @@ class KeypointsPainter extends CustomPainter {
     return true;
   }
 }
+
 
