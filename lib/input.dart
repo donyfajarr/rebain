@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:image/image.dart' as image_lib;
-import 'classifier.dart'; // Import your classifier
+import 'classifier.dart';
 import 'dart:math';
 
 class ImagePickerScreen extends StatefulWidget {
@@ -15,7 +15,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   final ImagePicker _picker = ImagePicker();
   late MoveNetClassifier _moveNetClassifier;
   bool _isModelReady = false;
-  Map<File, List<Keypoint>> _keypointsMap = {}; // Map to store keypoints for each image
+  Map<File, List<Keypoint>> _keypointsMap = {};
 
   @override
   void initState() {
@@ -55,8 +55,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   Future<void> _predict(File image) async {
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
-    final int originalWidth = imageInput.width;
-    final int originalHeight = imageInput.height;
 
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
     calculatePosture(keypoints);
@@ -122,7 +120,7 @@ Widget build(BuildContext context) {
                     final int originalHeight = image_lib.decodeImage(image.readAsBytesSync())!.height;
 
                     // Calculate scaling and padding
-                    double scale = 256 / max(originalWidth, originalHeight); // Assuming inputSize is 256
+                    double scale = 256 / max(originalWidth, originalHeight);
                     double newWidth = originalWidth * scale;
                     double newHeight = originalHeight * scale;
                     double paddingX = 256 - newWidth;
@@ -137,7 +135,7 @@ Widget build(BuildContext context) {
                           Container(
                             width: 256,
                             height: 256,
-                            color: Colors.black, // Background for padding
+                            color: Colors.white, // Background for padding
                             child: Center(
                               child: Image.file(
                                 image,
@@ -233,8 +231,8 @@ class KeypointsPainter extends CustomPainter {
 
     for (var i = 0; i < keypoints.length; i++) {
       final keypoint = keypoints[i];
-      if (keypoint.confidence > 0.4) {
-        // Map normalized keypoints to 256x256 image
+      if (keypoint.confidence > 0.1) {
+        
         final dx = keypoint.x * size.width;
         final dy = keypoint.y * size.height;
 
