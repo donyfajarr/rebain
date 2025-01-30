@@ -16,6 +16,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   late MoveNetClassifier _moveNetClassifier;
   bool _isModelReady = false;
   Map<File, List<Keypoint>> _keypointsMap = {};
+  bool _showKeypoints = true;
 
   @override
   void initState() {
@@ -57,22 +58,23 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
 
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
-    calculatePosture(keypoints);
-    Vector2D keypointToVector2D(Keypoint keypoint) {
-  return Vector2D(keypoint.x, keypoint.y);
-}
+
+
     // Convert keypoints to Vector2D
-  Vector2D leftShoulder = keypointToVector2D(keypoints[5]);
-  Vector2D leftElbow = keypointToVector2D(keypoints[7]);
-  Vector2D leftWrist = keypointToVector2D(keypoints[9]);
-  Vector2D leftHip = keypointToVector2D(keypoints[11]);
+  Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
+  Vector2D leftElbow = Vector2D(keypoints[7].x, keypoints[7].y);
+  Vector2D leftWrist = Vector2D(keypoints[9].x, keypoints[9].y);
+  Vector2D leftHip = Vector2D(keypoints[11].x, keypoints[11].y);
 
-  Vector2D rightShoulder = keypointToVector2D(keypoints[6]);
-  Vector2D rightElbow = keypointToVector2D(keypoints[8]);
-  Vector2D rightWrist = keypointToVector2D(keypoints[10]);
-  Vector2D rightHip = keypointToVector2D(keypoints[12]);
+  Vector2D rightShoulder = Vector2D(keypoints[6].x, keypoints[6].y);
+  Vector2D rightElbow = Vector2D(keypoints[8].x, keypoints[8].y);
+  Vector2D rightWrist = Vector2D(keypoints[10].x, keypoints[10].y);
+  Vector2D rightHip = Vector2D(keypoints[12].x, keypoints[12].y);
 
-  // Calculate lower arm angles
+  Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
+  Vector2D midHip = (leftHip + rightHip) / 2;
+
+  // Calculate angles
   var (leftLowerArmAngle, rightLowerArmAngle) = PostureCalculator.calculateLowerArmAngle(
     leftElbow, leftWrist, leftShoulder,
     rightElbow, rightWrist, rightShoulder,
@@ -80,22 +82,46 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Left Lower Arm Angle: $leftLowerArmAngle°');
   print('Right Lower Arm Angle: $rightLowerArmAngle°');
 
-  // Calculate lower arm outside angle
-  double angleOutside = PostureCalculator.calculateLowerArmOutside(
+  var (statusarmworkingoutside, workingoutsideangle) = PostureCalculator.calculateLowerArmOutside(
+    leftElbow,leftShoulder, leftHip, rightElbow, rightShoulder, rightHip);
+
+    print('Status $statusarmworkingoutside');
+    print('Angle Outside: $workingoutsideangle');
+
+  var (leftUpperArmAngle, rightupperArmAngle) = PostureCalculator.calculateUpperArmAngle(
     leftElbow, leftShoulder, leftHip,
     rightElbow, rightShoulder, rightHip,
   );
-  print('Arm Working Outside Angle: $angleOutside°');
+  print('Left Upper Arm Angle: $leftUpperArmAngle°');
+  print('Right Upper Arm Angle: $rightupperArmAngle');
+
+  var (statusshoulderraised, shoulderraiseddegree) = PostureCalculator.calculateShoulderRaised(leftShoulder, rightShoulder);
+  print(statusshoulderraised);
+  print('Diff: $shoulderraiseddegree');
+
+  var (statusabducted, upperarmabducteddegree) = PostureCalculator.calculateUpperArmAbducted(leftShoulder, leftElbow, midShoulder, rightShoulder, rightElbow);
+  print(statusabducted);
+  print('Diff: $upperarmabducteddegree');
+
+  // #BLUM DICEK
+  double trunkAngle = PostureCalculator.calculateTrunkAngle(midShoulder, midHip);
+  print('Trunk Angle: $trunkAngle°');
+
+  double neckAngle = PostureCalculator.calculateNeckAngle(midShoulder, midHip);
+  print('Neck Angle: $neckAngle°');
+
+  double legAngle = PostureCalculator.calculateLegAngle(leftHip, leftElbow, leftWrist);
+  print('Leg Angle: $legAngle°');
     setState(() {
       _keypointsMap[image] = keypoints;
     });
   }
 
-  void calculatePosture(List<Keypoint> keypoints) {
-    calculateUpperArmAngle(keypoints);
-    calculateTrunkAngle(keypoints);
-    calculateNeckAngle(keypoints);
-    calculateLegAngle(keypoints);
+
+  void _toggleKeypointsVisibility() {
+    setState(() {
+      _showKeypoints = !_showKeypoints;
+    });
   }
 
   @override
@@ -103,6 +129,13 @@ Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
       title: Text('Multiple Image Picker and MoveNet'),
+      actions: [
+          IconButton(
+            icon: Icon(_showKeypoints ? Icons.visibility : Icons.visibility_off),
+            onPressed: _toggleKeypointsVisibility,
+            tooltip: _showKeypoints ? 'Hide Keypoints' : 'Show Keypoints',
+          ),
+        ],
     ),
     body: Column(
       children: [
@@ -146,7 +179,7 @@ Widget build(BuildContext context) {
                             ),
                           ),
                           // Draw keypoints on top of the image
-                          if (keypoints != null)
+                          if (keypoints != null && _showKeypoints)
                             CustomPaint(
                               size: Size(256, 256),
                               painter: KeypointsPainter(
@@ -292,138 +325,6 @@ double calculateAngle(
   return angle * (180 / pi);
 }
 
-void calculateUpperArmAngle(List<Keypoint> keypoints) {
-  // Extract keypoints
-  final leftShoulder = {
-    'x': keypoints[5].x,
-    'y': keypoints[5].y,
-  };
-  final leftElbow = {
-    'x': keypoints[7].x,
-    'y': keypoints[7].y,
-  };
-  final leftHip = {
-    'x': keypoints[11].x,
-    'y': keypoints[11].y,
-  };
-
-  final rightShoulder = {
-    'x': keypoints[6].x,
-    'y': keypoints[6].y,
-  };
-  final rightElbow = {
-    'x': keypoints[8].x,
-    'y': keypoints[8].y,
-  };
-  final rightHip = {
-    'x': keypoints[12].x,
-    'y': keypoints[12].y,
-  };
-
-  // Calculate angles
-  final leftArmAngle = calculateAngle(leftElbow, leftShoulder, leftHip);
-  final rightArmAngle = calculateAngle(rightElbow, rightShoulder, rightHip);
-
-  print('Left Arm Angle: $leftArmAngle');
-  print('Right Arm Angle: $rightArmAngle');
-}
-
-void calculateTrunkAngle(List<Keypoint> keypoints) {
-  final leftShoulder = {
-    'x': keypoints[5].x,
-    'y': keypoints[5].y,
-  };
-  final rightShoulder = {
-    'x': keypoints[6].x,
-    'y': keypoints[6].y,
-  };
-  final leftHip = {
-    'x': keypoints[11].x,
-    'y': keypoints[11].y,
-  };
-  final rightHip = {
-    'x': keypoints[12].x,
-    'y': keypoints[12].y,
-  };
-
-  final midShoulder = {
-    'x': (leftShoulder['x']! + rightShoulder['x']!) / 2,
-    'y': (leftShoulder['y']! + rightShoulder['y']!) / 2,
-  };
-  final midHip = {
-    'x': (leftHip['x']! + rightHip['x']!) / 2,
-    'y': (leftHip['y']! + rightHip['y']!) / 2,
-  };
-
-  final trunkAngle = calculateAngle(midShoulder, midHip, {'x': midHip['x']!, 'y': midHip['y']! - 1}); // Vertical reference
-  print('Trunk Angle: $trunkAngle');
-}
-
-void calculateNeckAngle(List<Keypoint> keypoints) {
-  final leftEar = {
-    'x': keypoints[3].x,
-    'y': keypoints[3].y,
-  };
-  final rightEar = {
-    'x': keypoints[4].x,
-    'y': keypoints[4].y,
-  };
-  final leftShoulder = {
-    'x': keypoints[5].x,
-    'y': keypoints[5].y,
-  };
-  final rightShoulder = {
-    'x': keypoints[6].x,
-    'y': keypoints[6].y,
-  };
-
-  final midEar = {
-    'x': (leftEar['x']! + rightEar['x']!) / 2,
-    'y': (leftEar['y']! + rightEar['y']!) / 2,
-  };
-  final midShoulder = {
-    'x': (leftShoulder['x']! + rightShoulder['x']!) / 2,
-    'y': (leftShoulder['y']! + rightShoulder['y']!) / 2,
-  };
-
-  final neckAngle = calculateAngle(midEar, midShoulder, {'x': midShoulder['x']!, 'y': midShoulder['y']! - 1}); // Vertical reference
-  print('Neck Angle: $neckAngle');
-}
-
-void calculateLegAngle(List<Keypoint> keypoints) {
-  final leftHip = {
-    'x': keypoints[11].x,
-    'y': keypoints[11].y,
-  };
-  final leftKnee = {
-    'x': keypoints[13].x,
-    'y': keypoints[13].y,
-  };
-  final leftAnkle = {
-    'x': keypoints[15].x,
-    'y': keypoints[15].y,
-  };
-
-  final rightHip = {
-    'x': keypoints[12].x,
-    'y': keypoints[12].y,
-  };
-  final rightKnee = {
-    'x': keypoints[14].x,
-    'y': keypoints[14].y,
-  };
-  final rightAnkle = {
-    'x': keypoints[16].x,
-    'y': keypoints[16].y,
-  };
-
-  final leftLegAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
-  final rightLegAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
-
-  print('Left Leg Angle: $leftLegAngle');
-  print('Right Leg Angle: $rightLegAngle');
-}
-
 class Vector2D {
   final double x;
   final double y;
@@ -438,144 +339,77 @@ class Vector2D {
 }
 
 class PostureCalculator {
+  static double calculateAngle (Vector2D pointA, Vector2D pointB, Vector2D pointC){
+    Vector2D vectorBA = pointA - pointB;
+    Vector2D vectorBC = pointC - pointB;
+
+    double dotProduct = vectorBA.dot(vectorBC);
+    double magnitudeBA = vectorBA.norm();
+    double magnitudeBC = vectorBC.norm();
+
+    double angleRadians = acos(dotProduct / (magnitudeBA * magnitudeBC));
+    return angleRadians * (180 / pi);
+  }
+  
   static (double, double) calculateLowerArmAngle(
       Vector2D leftElbow, Vector2D leftWrist, Vector2D leftShoulder,
       Vector2D rightElbow, Vector2D rightWrist, Vector2D rightShoulder) {
-    // LEFT ARM
-    Vector2D vectorESLeft = leftElbow - leftShoulder;
-    Vector2D vectorEWLeft = leftWrist - leftElbow;
+    double leftAngle = calculateAngle(leftWrist, leftElbow, leftShoulder);
+    double rightAngle = calculateAngle(rightWrist, rightElbow, rightShoulder);
 
-    double normESLeft = vectorESLeft.norm();
-    double normEWLeft = vectorEWLeft.norm();
-    double dotProductLeft = vectorESLeft.dot(vectorEWLeft);
-
-    double leftLowerArmDegrees = 0;
-    if (normESLeft != 0 && normEWLeft != 0) {
-      double lowerArmRadiansLeft = acos(dotProductLeft / (normESLeft * normEWLeft));
-      leftLowerArmDegrees = lowerArmRadiansLeft * (180 / pi);
-      print('Lower arm left angle: $leftLowerArmDegrees°');
-    }
-
-    // RIGHT ARM
-    Vector2D vectorESRight = rightElbow - rightShoulder;
-    Vector2D vectorEWRight = rightWrist - rightElbow;
-
-    double normESRight = vectorESRight.norm();
-    double normEWRight = vectorEWRight.norm();
-    double dotProductRight = vectorESRight.dot(vectorEWRight);
-
-    double rightLowerArmDegrees = 0;
-    if (normESRight != 0 && normEWRight != 0) {
-      double lowerArmRadiansRight = acos(dotProductRight / (normESRight * normEWRight));
-      rightLowerArmDegrees = lowerArmRadiansRight * (180 / pi);
-      print('Lower arm right angle: $rightLowerArmDegrees°');
-    }
-
-    return (leftLowerArmDegrees, rightLowerArmDegrees);
+    return (leftAngle, rightAngle);
   }
 
-  static double calculateLowerArmOutside(
+   static (double, double) calculateUpperArmAngle(
       Vector2D leftElbow, Vector2D leftShoulder, Vector2D leftHip,
       Vector2D rightElbow, Vector2D rightShoulder, Vector2D rightHip) {
-    Vector2D midShoulder = Vector2D(
-      (leftShoulder.x + rightShoulder.x) / 2,
-      (leftShoulder.y + rightShoulder.y) / 2,
-    );
+    double leftAngle = calculateAngle(leftElbow, leftShoulder, leftHip);
+    double rightAngle = calculateAngle(rightElbow, rightShoulder, rightHip);
 
-    // LEFT ARM
-    Vector2D vectorESLeft = leftElbow - leftShoulder;
-    Vector2D vectorHSLeft = leftHip - leftShoulder;
-
-    double normESLeft = vectorESLeft.norm();
-    double normHSLeft = vectorHSLeft.norm();
-    double dotProductLeft = vectorESLeft.dot(vectorHSLeft);
-
-    double leftAngleDegrees = 0;
-    if (normESLeft != 0 && normHSLeft != 0) {
-      double leftRadians = acos(dotProductLeft / (normESLeft * normHSLeft));
-      leftAngleDegrees = leftRadians * (180 / pi);
-    }
-
-    // RIGHT ARM
-    Vector2D vectorESRight = rightElbow - rightShoulder;
-    Vector2D vectorHSRight = rightHip - rightShoulder;
-
-    double normESRight = vectorESRight.norm();
-    double normHSRight = vectorHSRight.norm();
-    double dotProductRight = vectorESRight.dot(vectorHSRight);
-
-    double rightAngleDegrees = 0;
-    if (normESRight != 0 && normHSRight != 0) {
-      double rightRadians = acos(dotProductRight / (normESRight * normHSRight));
-      rightAngleDegrees = rightRadians * (180 / pi);
-    }
-
-    double angleOutside = max(leftAngleDegrees, rightAngleDegrees);
-    if (angleOutside >= 30) {
-      print('Arm working outside: $angleOutside°');
-    } else {
-      print('Arm not working outside: $angleOutside°');
-    }
-
-    return angleOutside;
+    return (leftAngle, rightAngle);
   }
-
-  static double calculateNeckAngle(
-      Vector2D leftEar, Vector2D leftShoulder, Vector2D leftHip,
-      Vector2D rightEar, Vector2D rightShoulder, Vector2D rightHip) {
-    // Calculate midpoints
-    Vector2D midEar = (leftEar + rightEar) / 2;
-    Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
-    Vector2D midHip = (leftHip + rightHip) / 2;
-
-    // Calculate vectors
-    Vector2D vectorES = midEar - midShoulder;
-    Vector2D vectorSH = midShoulder - midHip;
-
-    // Calculate norms
-    double normES = vectorES.norm();
-    double normSH = vectorSH.norm();
-
-    // Calculate dot product
-    double dotProduct = vectorES.dot(vectorSH);
-
-    // Calculate neck angle in radians
-    double neckAngleRadians = acos(dotProduct / (normES * normSH));
-
-    // Convert to degrees
-    double neckAngleDegrees = neckAngleRadians * (180 / pi);
-
-    print('Neck Angle: $neckAngleDegrees°');
-    return neckAngleDegrees;
-  }
-}
-
-void main() {
-  // Example usage
-  Vector2D leftElbow = Vector2D(1, 2);
-  Vector2D leftWrist = Vector2D(1, 3);
-  Vector2D leftShoulder = Vector2D(0, 0);
-  Vector2D rightElbow = Vector2D(-1, 2);
-  Vector2D rightWrist = Vector2D(-1, 3);
-  Vector2D rightShoulder = Vector2D(0, 0);
-
-  Vector2D leftHip = Vector2D(0, 4);
-  Vector2D rightHip = Vector2D(0, 4);
-
-  // Calculate lower arm angles
-  var (leftLowerArmAngle, rightLowerArmAngle) = PostureCalculator.calculateLowerArmAngle(
-    leftElbow, leftWrist, leftShoulder,
-    rightElbow, rightWrist, rightShoulder,
-  );
-  print('Left Lower Arm Angle: $leftLowerArmAngle°');
-  print('Right Lower Arm Angle: $rightLowerArmAngle°');
-
-  // Calculate lower arm outside angle
-  double angleOutside = PostureCalculator.calculateLowerArmOutside(
-    leftElbow, leftShoulder, leftHip,
-    rightElbow, rightShoulder, rightHip,
-  );
-  print('Arm Working Outside Angle: $angleOutside°');
   
+  static (String, double) calculateUpperArmAbducted(
+    Vector2D leftShoulder, Vector2D leftElbow, Vector2D midShoulder, Vector2D rightShoulder, Vector2D rightElbow){
+      double leftAngle = calculateAngle(leftElbow, leftShoulder, midShoulder);
+      double rightAngle = calculateAngle(rightElbow, rightShoulder, midShoulder);
+      double angle = max(leftAngle, rightAngle);
+      String status = angle > 110.0 ? "Upper Arm is Abducted" : "Upper Arm is not Abducted";
+      return (status, angle);
+    }
+
+  static double calculateTrunkAngle(Vector2D midShoulder, Vector2D midHip) {
+    // Vertical reference vector (straight down)
+    Vector2D verticalReference = Vector2D(midHip.x, midHip.y - 1);
+
+    return calculateAngle(midShoulder, midHip, verticalReference);
+  }
+
+  static double calculateNeckAngle(Vector2D midEar, Vector2D midShoulder) {
+    // Vertical reference vector (straight down)
+    Vector2D verticalReference = Vector2D(midShoulder.x, midShoulder.y - 1);
+
+    return calculateAngle(midEar, midShoulder, verticalReference);
+  }
+
+  static double calculateLegAngle(Vector2D hip, Vector2D knee, Vector2D ankle) {
+    return calculateAngle(hip, knee, ankle);
+  }
+  static (String, double) calculateShoulderRaised(Vector2D leftShoulder, Vector2D rightShoulder) {
+    double threshold = 30.0;
+    double shoulderdiff = (leftShoulder.y - rightShoulder.y).abs();
+    String status = shoulderdiff > threshold ? "shoulder is raised" : "shoulder is not raised";
+
+    return (status, shoulderdiff);
+  }
+  static (String, double) calculateLowerArmOutside(Vector2D leftElbow, Vector2D leftShoulder,
+  Vector2D leftHip, Vector2D rightElbow, Vector2D rightShoulder, Vector2D rightHip) {
+    double threshold = 30.0;
+    double leftAngle = calculateAngle(leftElbow,leftHip, leftShoulder);
+    double rightAngle = calculateAngle(rightElbow,rightHip, rightShoulder);
+    double angle = max(leftAngle, rightAngle);
+    String status = angle >= threshold ? "Arm Working Outside" : "Arm not Working Outside";
+    return (status, angle);
+  }
   
 }
