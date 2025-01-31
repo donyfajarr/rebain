@@ -60,19 +60,30 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
 
 
+  Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
+
     // Convert keypoints to Vector2D
+  Vector2D leftEye = Vector2D(keypoints[1].x, keypoints[1].y);
+  Vector2D leftEar = Vector2D(keypoints[3].x, keypoints[3].y);
   Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
   Vector2D leftElbow = Vector2D(keypoints[7].x, keypoints[7].y);
   Vector2D leftWrist = Vector2D(keypoints[9].x, keypoints[9].y);
   Vector2D leftHip = Vector2D(keypoints[11].x, keypoints[11].y);
+  Vector2D leftKnee = Vector2D(keypoints[13].x, keypoints[13].y);
+  Vector2D leftAnkle = Vector2D(keypoints[15].x, keypoints[15].y);
 
+  Vector2D rightEye = Vector2D(keypoints[2].x, keypoints[2].y);
+  Vector2D rightEar = Vector2D(keypoints[4].x, keypoints[4].y);
   Vector2D rightShoulder = Vector2D(keypoints[6].x, keypoints[6].y);
   Vector2D rightElbow = Vector2D(keypoints[8].x, keypoints[8].y);
   Vector2D rightWrist = Vector2D(keypoints[10].x, keypoints[10].y);
   Vector2D rightHip = Vector2D(keypoints[12].x, keypoints[12].y);
+  Vector2D rightKnee = Vector2D(keypoints[14].x, keypoints[14].y);
+  Vector2D rightAnkle = Vector2D(keypoints[16].x, keypoints[16].y);
 
   Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
   Vector2D midHip = (leftHip + rightHip) / 2;
+  Vector2D midKnee = (leftKnee + rightKnee) /2;
 
   // Calculate angles
   var (leftLowerArmAngle, rightLowerArmAngle) = PostureCalculator.calculateLowerArmAngle(
@@ -103,15 +114,53 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print(statusabducted);
   print('Diff: $upperarmabducteddegree');
 
-  // #BLUM DICEK
-  double trunkAngle = PostureCalculator.calculateTrunkAngle(midShoulder, midHip);
-  print('Trunk Angle: $trunkAngle°');
-
-  double neckAngle = PostureCalculator.calculateNeckAngle(midShoulder, midHip);
+  double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
   print('Neck Angle: $neckAngle°');
 
-  double legAngle = PostureCalculator.calculateLegAngle(leftHip, leftElbow, leftWrist);
-  print('Leg Angle: $legAngle°');
+  double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftEye, rightEye);
+  print('Neck Twisted : $neckTwisted');
+
+  var (neckbendingleft, neckbendingright) = PostureCalculator.calculateNeckBending(leftEar, midShoulder, leftShoulder, rightEar, rightShoulder);
+  print('Neck Bending Left: $neckbendingleft');
+  print('Neck Bending Right: $neckbendingright');
+
+  double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
+  print('Trunk Flexion Angle: $trunkFlexion');
+
+  double trunkTwisting = PostureCalculator.calculateTrunkTwisting(rightShoulder, midHip, rightHip, leftShoulder, leftHip);
+  print('Trunk Twisting Angle: $trunkTwisting');
+
+  var (leftbending, rightbending) = PostureCalculator.calculateTrunkBending(rightHip, midHip, midShoulder, leftHip);
+  print('Trunk Bending Left Angle: $leftbending');
+  print('Trunk Bending Right Angle: $rightbending');
+
+  // TO DO
+
+  // TRUNK FLEXION ANGLE
+  // TRUNK TWISTING ANGLE
+  // TRUNK BENDING ANGLE
+  // LEGS
+
+  // WRIST POSITION ??
+
+  
+  // INPUT
+  // ADD FORCE INPUT
+  // IF ARM IS SUPPORTED OR PERSON IS LEANING
+  
+  // DONE
+  // UPPER ARM POSITION
+  // SHOULDER RAISED
+  // UPPER ARM ABDUCTED
+  // LOWER ARM POSITION
+  // LOWER ARM WORKING OUTSIDE
+  // UPPER ARM
+
+  // NEED CHECK
+  // NECK ANGLE
+  // NECK TWISTING ANGLE
+  // NECK BENDING ANGLE
+
     setState(() {
       _keypointsMap[image] = keypoints;
     });
@@ -378,23 +427,7 @@ class PostureCalculator {
       return (status, angle);
     }
 
-  static double calculateTrunkAngle(Vector2D midShoulder, Vector2D midHip) {
-    // Vertical reference vector (straight down)
-    Vector2D verticalReference = Vector2D(midHip.x, midHip.y - 1);
 
-    return calculateAngle(midShoulder, midHip, verticalReference);
-  }
-
-  static double calculateNeckAngle(Vector2D midEar, Vector2D midShoulder) {
-    // Vertical reference vector (straight down)
-    Vector2D verticalReference = Vector2D(midShoulder.x, midShoulder.y - 1);
-
-    return calculateAngle(midEar, midShoulder, verticalReference);
-  }
-
-  static double calculateLegAngle(Vector2D hip, Vector2D knee, Vector2D ankle) {
-    return calculateAngle(hip, knee, ankle);
-  }
   static (String, double) calculateShoulderRaised(Vector2D leftShoulder, Vector2D rightShoulder) {
     double threshold = 30.0;
     double shoulderdiff = (leftShoulder.y - rightShoulder.y).abs();
@@ -412,4 +445,39 @@ class PostureCalculator {
     return (status, angle);
   }
   
+  static double calculateNeckAngle(Vector2D nose, Vector2D midShoulder, Vector2D midHip) {
+
+    return calculateAngle(nose, midShoulder, midHip);
+  }
+
+  static double calculateNeckTwisted(Vector2D nose, Vector2D leftEye, Vector2D rightEye){
+    double angle =  (90 - calculateAngle(nose, leftEye, rightEye)).abs();
+
+    return angle;
+
+  }
+
+  static (double,double) calculateNeckBending(Vector2D leftEar, Vector2D midShoulder, Vector2D leftShoulder,
+  Vector2D rightEar, Vector2D rightShoulder){
+    double neckbendingleft = (65- calculateAngle(leftEar, midShoulder, rightEar)).abs();
+    double neckbendingright = (65- calculateAngle(rightEar, midShoulder, leftEar)).abs();
+    
+    return (neckbendingleft, neckbendingright);
+}
+  static double calculateTrunkFlexion(Vector2D midknee, Vector2D midhip, Vector2D midshoulder){
+    return calculateAngle(midknee, midhip, midshoulder);
+  }
+  static double calculateTrunkTwisting(Vector2D rightshoulder, Vector2D midhip, Vector2D righthip, Vector2D leftshoulder, Vector2D lefthip){
+    double angle = max(calculateAngle(rightshoulder, midhip, righthip), calculateAngle(leftshoulder, midhip, lefthip));
+    return angle;
+  }
+
+  
+
+  static (double,double) calculateTrunkBending(Vector2D righthip,Vector2D midhip,Vector2D midshoulder,Vector2D lefthip){
+  double rightangle = calculateAngle(righthip, midhip, midshoulder);
+  double leftangle = calculateAngle(lefthip, midhip, midshoulder);
+  return (rightangle,leftangle);
+  }
+
 }
