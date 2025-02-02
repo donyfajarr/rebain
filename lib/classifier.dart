@@ -156,6 +156,7 @@ Future<List<Keypoint>> processAndRunModel(Image imageFile) async {
     final inputBuffer =
         await _imageToByteListUint8(imageFile, 256);
     _outputBuffer = TensorBuffer.createFixedSize(_outputShape, _outputType);
+    print(inputBuffer);
     interpreter.run(inputBuffer, _outputBuffer.buffer);
 
     final outputData = _outputBuffer.getDoubleList();
