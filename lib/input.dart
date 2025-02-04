@@ -63,10 +63,51 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
 
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
-    await _handClassifier.loadModel();
+    // await _handClassifier.loadModel();
     List<Handkeypoint> handkeypoints = await _handClassifier.processAndRunModel(imageInput);
 
   Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
+
+  // Convert handkeypoints to Vector2D
+  // THUMB
+  // Fingertip indices
+  
+  // Wrist coordinates
+  double wristAX = handkeypoints[0].x;
+  double wristAY = handkeypoints[0].y;
+
+  double leftwristBX = keypoints[9].x;
+  double leftwristBY = keypoints[9].y;
+
+  double rightwristBX = keypoints[10].x;
+  double leftwristBY = keypoints[10].y;
+
+  // All finger joint indices
+  List<int> fingerJoints = [
+    1, 2, 3, 4,    // Thumb
+    5, 6, 7, 8,    // Index Finger
+    9, 10, 11, 12, // Middle Finger
+    13, 14, 15, 16, // Ring Finger
+    17, 18, 19, 20  // Pinky
+  ];
+
+  // Find the joint with the maximum Y value
+  double maxY = handkeypoints[fingerJoints[0]].y;
+  int maxIndex = fingerJoints[0];
+
+  for (int i = 1; i < fingerJoints.length; i++) {
+    if (handkeypoints[fingerJoints[i]].y > maxY) {
+      maxY = handkeypoints[fingerJoints[i]].y;
+      maxIndex = fingerJoints[i];
+    }
+  }
+  Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
+
+  // Calculate the vector from the wrist to the joint with the largest Y
+  // double vectorX = handkeypoints[maxIndex].x - wristX;
+  // double vectorY = handkeypoints[maxIndex].y - wristY;
+  // leftelbow - leftwrist -> chosen
+  // or 
 
     // Convert keypoints to Vector2D
   Vector2D leftEye = Vector2D(keypoints[1].x, keypoints[1].y);
@@ -214,7 +255,8 @@ Widget build(BuildContext context) {
                     final image = _images[index];
                     final keypoints = _keypointsMap[image];
                     final handkeypoints = _handKeypoints[image];
-
+                    print(keypoints);
+                    print(handkeypoints);
                     // Original image dimensions
                     final int originalWidth = image_lib.decodeImage(image.readAsBytesSync())!.width;
                     final int originalHeight = image_lib.decodeImage(image.readAsBytesSync())!.height;
@@ -246,15 +288,15 @@ Widget build(BuildContext context) {
                             ),
                           ),
                           // Draw keypoints on top of the image
-                          // if (keypoints != null && _showKeypoints)
-                          //   CustomPaint(
-                          //     size: Size(256, 256),
-                          //     painter: KeypointsPainter(
-                          //       keypoints,
-                          //       paddingX,
-                          //       paddingY,
-                          //     ),
-                          //   ),
+                          if (keypoints != null && _showKeypoints)
+                            CustomPaint(
+                              size: Size(256, 256),
+                              painter: KeypointsPainter(
+                                keypoints,
+                                paddingX,
+                                paddingY,
+                              ),
+                            ),
                           if (handkeypoints != null)
                             CustomPaint(
                               size: Size(256, 256),
@@ -315,6 +357,31 @@ class HandKeypointsPainter extends CustomPainter {
   final double paddingX;
   final double paddingY;
 
+  static const List<String> keypointLabels = [
+    "Wrist",
+    "Thumb_CMC", //Carpometacarpal Joint): Base of the thumb where it connects to the wrist.
+    "Thumb_MCP", //(Metacarpophalangeal Joint): Middle joint of the thumb
+    "Thumb_IP", //(Interphalangeal Joint): Joint near the tip of the thumb.
+    "Thumb_TIP", //The very tip of the thumb.
+    "Index_Finger_MCP",
+    "Index_Finger_PIP", //(Proximal Interphalangeal Joint): Middle joint of the finger
+    "Index_Finger_DIP",//(Distal Interphalangeal Joint): Joint near the fingertip.
+    "Index_Finger_TIP",
+    "Middle_Finger_MCP",
+    "Middle_Finger_PIP", 
+    "Middle_Finger_DIP",
+    "Middle_Finger_TIP",
+    "Ring_Finger_MCP",
+    "Ring_Finger_PIP", 
+    "Ring_Finger_DIP",
+    "Ring_Finger_TIP",
+    "Pinky_MCP",
+    "Pinky_PIP", 
+    "Pinky_DIP",
+    "Pinky_TIP",
+  ];
+
+
   HandKeypointsPainter(this.handkeypoints, this.paddingX, this.paddingY);
 
   @override
@@ -342,9 +409,9 @@ class HandKeypointsPainter extends CustomPainter {
         canvas.drawCircle(Offset(dx, dy), 2.0, paint);
 
         // Draw the keypoint label
-        // final label = keypointLabels[i];
+        final label = keypointLabels[i];
         final textSpan = TextSpan(
-          // text: label,
+          text: label,
           style: TextStyle(
             color: Colors.white,
             fontSize: 8,
@@ -417,9 +484,9 @@ class KeypointsPainter extends CustomPainter {
         canvas.drawCircle(Offset(dx, dy), 2.0, paint);
 
         // Draw the keypoint label
-        final label = keypointLabels[i];
+        // final label = keypointLabels[i];
         final textSpan = TextSpan(
-          text: label,
+          // text: label,
           style: TextStyle(
             color: Colors.white,
             fontSize: 8,

@@ -28,7 +28,7 @@ class HandClassifier {
   // Map<int, Object> outputs = {};
 
   // TensorBuffer outputLocations = TensorBufferFloat([]);
-  final int inputSize = 256; // Input size for the MediaPipe Hands model
+  final int inputSize = 224; // Input size for the MediaPipe Hands model
   final double scoreThreshold = 0.3; // Confidence threshold for hand detection
   final double existThreshold = 0.1;
 
@@ -51,16 +51,16 @@ class HandClassifier {
     try {
       interpreter = await Interpreter.fromAsset(
         // 'assets/movenetflt32.tflite', //SinglePoseThunderInputFloat32OutputFloat32
-        // 'assets/MediaPipeHandLandmarkDetector.tflite',
-        'assets/MediaPipeHandLandmarkDetector.tflite', //SinglePoseThunderInputUint8OutputFloat32
+        'assets/hand_landmark.tflite',
+        // 'assets/MediaPipeHandLandmarkDetector.tflite', //SinglePoseThunderInputUint8OutputFloat32
         options: _interpreterOptions,
       );
       print('Interpreter Created Successfully $interpreter');
 
       _inputShape = interpreter.getInputTensor(0).shape;
-      _outputShape = interpreter.getOutputTensor(2).shape;
+      _outputShape = interpreter.getOutputTensor(0).shape;
       _inputType = interpreter.getInputTensor(0).type;
-      _outputType = interpreter.getOutputTensor(2).type;
+      _outputType = interpreter.getOutputTensor(0).type;
       
       print("Hand Landmark");
       debugPrint('Input Shape: $_inputShape');
@@ -132,6 +132,11 @@ Future<Float32List> _imageToByteListFloat32(Image image, int inputSize) async {
 
 Future<List<Handkeypoint>> processAndRunModel(Image imageFile) async {
   try {
+
+    if (interpreter == null) {
+  print('Interpreter is null.');
+  return [];
+}
     print("Processing image...");
 
     final inputBuffer =
@@ -163,7 +168,8 @@ Future<List<Handkeypoint>> processAndRunModel(Image imageFile) async {
 
   print('Running inference...');
 
-  interpreter.run(reshapedInput, _outputBuffer); 
+  interpreter.run(reshapedInput, _outputBuffer.buffer); 
+
   print('Inference completed successfully.');
 } catch (e, stacktrace) {
   print('Error during image processing or model inference: $e');
@@ -173,17 +179,18 @@ Future<List<Handkeypoint>> processAndRunModel(Image imageFile) async {
       // final outputTest = _outputBuffer;
       // print(outputTest.);
       final outputData = _outputBuffer.getDoubleList();
+      // print(outputData.length);
       // print (outputData.length);
 
 
       debugPrint('Output Raw : $outputData');
+      print(outputData.length);
   print(imageFile.width);
 
-  
  
-    // List<Handkeypoint> keypoints = parseKeypoints(outputData, imageFile.width.toDouble(), imageFile.height.toDouble());
+    List<Handkeypoint> handkeypoints = parseKeypoints(outputData, imageFile.width.toDouble(), imageFile.height.toDouble());
 
-    return [];
+    return handkeypoints;
 
   } catch (e) {
     print('Error during image processing or model inference: ${e.toString()}');
@@ -196,13 +203,16 @@ List<Handkeypoint> parseKeypoints(List<double> modelOutput, double imageWidth, d
 
   for (int i = 0; i < modelOutput.length; i += 3) {
     // Normalize coordinates from the model output (range 0-1) to the image dimensions
-    double normalizedX = (modelOutput[i +1]) ;  // Scale x-coordinate
-    double normalizedY = (modelOutput[i]);     // Scale y-coordinate
+    double normalizedX = (modelOutput[i] / inputSize) ;  // Scale x-coordinate
+    double normalizedY = (modelOutput[i + 1] / inputSize);     // Scale y-coordinate
     double confidence = modelOutput[i + 2];  // Confidence
 
-    if (confidence >= scoreThreshold){
-      handkeypoints.add(Handkeypoint(normalizedX, normalizedY, confidence));
-    }
+
+    handkeypoints.add(Handkeypoint(normalizedX, normalizedY, confidence));
+
+    // if (confidence >= scoreThreshold){
+    //   handkeypoints.add(Handkeypoint(normalizedX, normalizedY, confidence));
+    // }
 
     
   } 
