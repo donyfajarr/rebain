@@ -8,6 +8,7 @@ import 'package:image/image.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
 import 'input.dart';
+// import 'calculate.dart';
 // import 'package:camera/camera.dart';
 
 
@@ -203,8 +204,8 @@ List<Handkeypoint> parseKeypoints(List<double> modelOutput, double imageWidth, d
 
   for (int i = 0; i < modelOutput.length; i += 3) {
     // Normalize coordinates from the model output (range 0-1) to the image dimensions
-    double normalizedX = (modelOutput[i] / inputSize) ;  // Scale x-coordinate
-    double normalizedY = (modelOutput[i + 1] / inputSize);     // Scale y-coordinate
+    double normalizedX = (modelOutput[i + 1] / inputSize) ;  // Scale x-coordinate
+    double normalizedY = (modelOutput[i] / inputSize);     // Scale y-coordinate
     double confidence = modelOutput[i + 2];  // Confidence
 
 

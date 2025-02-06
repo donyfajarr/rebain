@@ -66,50 +66,33 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     // await _handClassifier.loadModel();
     List<Handkeypoint> handkeypoints = await _handClassifier.processAndRunModel(imageInput);
 
-  Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
 
-  // Convert handkeypoints to Vector2D
-  // THUMB
-  // Fingertip indices
-  
-  // Wrist coordinates
-  double wristAX = handkeypoints[0].x;
-  double wristAY = handkeypoints[0].y;
 
-  double leftwristBX = keypoints[9].x;
-  double leftwristBY = keypoints[9].y;
 
-  double rightwristBX = keypoints[10].x;
-  double leftwristBY = keypoints[10].y;
 
-  // All finger joint indices
-  List<int> fingerJoints = [
-    1, 2, 3, 4,    // Thumb
-    5, 6, 7, 8,    // Index Finger
-    9, 10, 11, 12, // Middle Finger
-    13, 14, 15, 16, // Ring Finger
-    17, 18, 19, 20  // Pinky
-  ];
+ 
 
-  // Find the joint with the maximum Y value
-  double maxY = handkeypoints[fingerJoints[0]].y;
-  int maxIndex = fingerJoints[0];
 
-  for (int i = 1; i < fingerJoints.length; i++) {
-    if (handkeypoints[fingerJoints[i]].y > maxY) {
-      maxY = handkeypoints[fingerJoints[i]].y;
-      maxIndex = fingerJoints[i];
+  double maxX = handkeypoints[0].x;
+  int maxIndex = 0;
+
+  for (int i = 0; i < handkeypoints.length; i++) {
+    if (handkeypoints[i].x > maxX) {
+      maxX = handkeypoints[i].x;
+      maxIndex = i;
     }
   }
   Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
+  // print('double $X');
+  print('chosen : $chosen');
 
-  // Calculate the vector from the wrist to the joint with the largest Y
-  // double vectorX = handkeypoints[maxIndex].x - wristX;
-  // double vectorY = handkeypoints[maxIndex].y - wristY;
-  // leftelbow - leftwrist -> chosen
-  // or 
+  // Vector2D largestXPoint = Vector2D(chosen.x, chosen.y);
 
+
+  // Return null if keypoint is missing or low confidence
+  
     // Convert keypoints to Vector2D
+  Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
   Vector2D leftEye = Vector2D(keypoints[1].x, keypoints[1].y);
   Vector2D leftEar = Vector2D(keypoints[3].x, keypoints[3].y);
   Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
@@ -131,6 +114,11 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
   Vector2D midHip = (leftHip + rightHip) / 2;
   Vector2D midKnee = (leftKnee + rightKnee) /2;
+
+
+  
+
+
 
   // Calculate angles
   // A. Neck, Trunk, and Leg Analysis
@@ -211,11 +199,25 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   // Calculate Total Lower Arm Score
 
   // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
+  Vector2D chosenWrist;
+  Vector2D chosenElbow;
 
-  // double wristAngle  = PostureCalculator.calculateWristAngle(
-  //   leftWrist, rightWrist);
-  //   print('Left Wrist Angle: $leftWrist');
-  //   print('Right Wrist Angle: $rightWrist');
+  double distanceLeftWrist = leftWrist.distanceTo(chosen);
+  double distanceRightWrist = rightWrist.distanceTo(chosen);
+
+
+if (distanceLeftWrist < distanceRightWrist) {
+    chosenWrist = leftWrist;
+    chosenElbow = leftElbow;
+} else {
+    chosenWrist = rightWrist;
+    chosenElbow = rightElbow;
+}
+  double wristAngle = PostureCalculator.calculateWristAngle(
+    chosenWrist, chosenElbow, chosen
+);
+  
+    print('Wrist Angle: $wristAngle');
 
 
     setState(() {
@@ -342,6 +344,9 @@ class Keypoint {
   final double confidence;
 
   Keypoint(this.x, this.y, this.confidence);
+
+  
+
 }
 
 class Handkeypoint {
@@ -545,6 +550,17 @@ class Vector2D {
 
   Vector2D(this.x, this.y);
 
+  double distanceTo(Vector2D other) {
+    return sqrt(pow(other.x - x, 2) + pow(other.y - y, 2));
+  }
+
+  Vector2D? getKeypoint(List<Keypoint> keypoints, int index) {
+  if (index >= 0 && index < keypoints.length && keypoints[index].confidence > 0.1) {
+    return Vector2D(keypoints[index].x, keypoints[index].y);
+  }
+  return null; // Return null if confidence is too low or index is invalid
+}
+
   Vector2D operator +(Vector2D other) => Vector2D(x + other.x, y + other.y);
   Vector2D operator -(Vector2D other) => Vector2D(x - other.x, y - other.y);
   Vector2D operator /(double scalar) => Vector2D(x / scalar, y / scalar);
@@ -574,7 +590,7 @@ class PostureCalculator {
     return (leftAngle, rightAngle);
   }
 
-   static (double, double) calculateUpperArmAngle(
+  static (double, double) calculateUpperArmAngle(
       Vector2D leftElbow, Vector2D leftShoulder, Vector2D leftHip,
       Vector2D rightElbow, Vector2D rightShoulder, Vector2D rightHip) {
     double leftAngle = calculateAngle(leftElbow, leftShoulder, leftHip);
@@ -641,7 +657,9 @@ class PostureCalculator {
     return (max(leftlegs, rightlegs));
   }
 
-  // static double calculateWrist(Vector2D leftWrist, Vector2D rightWrist){
-    
+  static double calculateWristAngle(Vector2D chosenWrist, Vector2D chosenElbow, Vector2D chosen){
+    double angle = calculateAngle(chosenElbow, chosenWrist, chosen);
+    return angle;
   // }
+  }
 }
