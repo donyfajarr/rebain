@@ -6,337 +6,10 @@ import 'classifier.dart';
 import 'handclassifier.dart';
 import 'dart:math';
 
-class ImagePickerScreen extends StatefulWidget {
-  @override
-  _ImagePickerScreenState createState() => _ImagePickerScreenState();
-}
-
-class _ImagePickerScreenState extends State<ImagePickerScreen> {
-  List<File> _images = [];
-  final ImagePicker _picker = ImagePicker();
-  late MoveNetClassifier _moveNetClassifier;
-  bool _isModelReady = false;
-  Map<File, List<Keypoint>> _keypointsMap = {};
-  bool _showKeypoints = true;
-  late HandClassifier _handClassifier;
-  Map<File, List<Handkeypoint>> _handKeypoints = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeClassifier();
-  }
-
-  Future<void> _initializeClassifier() async {
-    _moveNetClassifier = MoveNetClassifier();
-    _handClassifier = HandClassifier(numThreads: 4);
-    try {
-      print("Loading model...");
-      await _moveNetClassifier.loadModel();
-      setState(() {
-        _isModelReady = true;
-      });
-      print("Model is ready for use.");
-    } catch (e) {
-      print("Error initializing model: $e");
-    }
-
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await _picker.pickImage(source: source);
-
-    if (pickedFile != null && _isModelReady) {
-      final image = File(pickedFile.path);
-      setState(() {
-        _images.add(image);
-      });
-      await _predict(image);
-    } else if (!_isModelReady) {
-      print("Model is not ready yet!");
-    } else {
-      print("No image selected.");
-    }
-  }
-
-  Future<void> _predict(File image) async {
-    final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
-
-    List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
-    // await _handClassifier.loadModel();
-    List<Handkeypoint> handkeypoints = await _handClassifier.processAndRunModel(imageInput);
 
 
 
-
-
- 
-
-
-  double maxX = handkeypoints[0].x;
-  int maxIndex = 0;
-
-  for (int i = 0; i < handkeypoints.length; i++) {
-    if (handkeypoints[i].x > maxX) {
-      maxX = handkeypoints[i].x;
-      maxIndex = i;
-    }
-  }
-  Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
-  // print('double $X');
-  print('chosen : $chosen');
-
-  // Vector2D largestXPoint = Vector2D(chosen.x, chosen.y);
-
-
-  // Return null if keypoint is missing or low confidence
-  
-    // Convert keypoints to Vector2D
-  Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
-  Vector2D leftEye = Vector2D(keypoints[1].x, keypoints[1].y);
-  Vector2D leftEar = Vector2D(keypoints[3].x, keypoints[3].y);
-  Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
-  Vector2D leftElbow = Vector2D(keypoints[7].x, keypoints[7].y);
-  Vector2D leftWrist = Vector2D(keypoints[9].x, keypoints[9].y);
-  Vector2D leftHip = Vector2D(keypoints[11].x, keypoints[11].y);
-  Vector2D leftKnee = Vector2D(keypoints[13].x, keypoints[13].y);
-  Vector2D leftAnkle = Vector2D(keypoints[15].x, keypoints[15].y);
-
-  Vector2D rightEye = Vector2D(keypoints[2].x, keypoints[2].y);
-  Vector2D rightEar = Vector2D(keypoints[4].x, keypoints[4].y);
-  Vector2D rightShoulder = Vector2D(keypoints[6].x, keypoints[6].y);
-  Vector2D rightElbow = Vector2D(keypoints[8].x, keypoints[8].y);
-  Vector2D rightWrist = Vector2D(keypoints[10].x, keypoints[10].y);
-  Vector2D rightHip = Vector2D(keypoints[12].x, keypoints[12].y);
-  Vector2D rightKnee = Vector2D(keypoints[14].x, keypoints[14].y);
-  Vector2D rightAnkle = Vector2D(keypoints[16].x, keypoints[16].y);
-
-  Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
-  Vector2D midHip = (leftHip + rightHip) / 2;
-  Vector2D midKnee = (leftKnee + rightKnee) /2;
-
-
-  
-
-
-
-  // Calculate angles
-  // A. Neck, Trunk, and Leg Analysis
-  // 1. Locate Neck Position (+1 jika 10-20, +2 jika 20 - infinite, +2 jika negatif infinite - 0)
-  double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
-  print('Neck Angle: $neckAngle°');
-  // 1.1 If Neck is twisted (+1 jika 5-infinite)
-  double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftEye, rightEye);
-  print('Neck Twisted : $neckTwisted');
-
-  // 1.2 If Neck is side bending (+1 jika 5-infinite)
-  var (neckbendingleft, neckbendingright) = PostureCalculator.calculateNeckBending(leftEar, midShoulder, leftShoulder, rightEar, rightShoulder);
-  print('Neck Bending Left: $neckbendingleft');
-  print('Neck Bending Right: $neckbendingright');
-
-  // Calculate Total Neck Score
-
-  // 2. Locate Trunk Position (+1 jika 0, +2 jika -infinite - 0, +2 jika 0 - 20, +3 jika 20 - 60, +4 jika 60 - infinite)
-  double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
-  print('Trunk Flexion Angle: $trunkFlexion');
-
-  // 2.1 If trunk is twisted (+1 jika 100 - infinite)
-  double trunkTwisting = PostureCalculator.calculateTrunkTwisting(rightShoulder, midHip, rightHip, leftShoulder, leftHip);
-  print('Trunk Twisting Angle: $trunkTwisting');
-
-  // 2.2 If trunk is bending (+1 jika -infinite - 85, +1 jika 95 - infinite)
-  var (leftbending, rightbending) = PostureCalculator.calculateTrunkBending(rightHip, midHip, midShoulder, leftHip);
-  print('Trunk Bending Left Angle: $leftbending');
-  print('Trunk Bending Right Angle: $rightbending');
-
-  // Calculate Total Trunk Score
-
-  // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
-  double legs = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
-  print('Leg Angle $legs');
-
-  // Calculate Total Legs Score 
-
-  // 4. Total score from 1-3
-
-  // 5. Input for load/lbs,
-  // +0 jika load <11 lbs, +1 jika load 11-22 lbs, +2 jika load >22 lbs
-  // +1 jika shock or rapid build up force
-
-  // 6. Total score 4 + 5 
-
-  // B. Arm and Wrist Analysis
-  // 7. Locate Upper Arm Position (+1 jika -20 -20, +2 jika -infinite - -20, +2 jika 20-45, +3 jika 45-90, +4 jika 90 - infinite)
-  var (leftUpperArmAngle, rightupperArmAngle) = PostureCalculator.calculateUpperArmAngle(
-    leftElbow, leftShoulder, leftHip,
-    rightElbow, rightShoulder, rightHip,
-  );
-  print('Left Upper Arm Angle: $leftUpperArmAngle°');
-  print('Right Upper Arm Angle: $rightupperArmAngle');
-  // 7.1 If shoulder is raised +1
-  var (statusshoulderraised, shoulderraiseddegree) = PostureCalculator.calculateShoulderRaised(leftShoulder, rightShoulder);
-  print(statusshoulderraised);
-  print('Diff: $shoulderraiseddegree');
-  // 7.2 If upper arm is abducted +1
-  var (statusabducted, upperarmabducteddegree) = PostureCalculator.calculateUpperArmAbducted(leftShoulder, leftElbow, midShoulder, rightShoulder, rightElbow);
-  print(statusabducted);
-  print('Diff: $upperarmabducteddegree');
-  // 7.3 If arm is supported or person is leaning +1
-
-  // input
-
-  // Calculate Total Upper Arm Score
-
-  // 8. Locate Lower Arm Position (+1 jika 60-100, +2 jika -infinite - 60 + 2 jika 100 - infinite)
-  var (leftLowerArmAngle, rightLowerArmAngle) = PostureCalculator.calculateLowerArmAngle(
-    leftElbow, leftWrist, leftShoulder,
-    rightElbow, rightWrist, rightShoulder,
-  );
-  print('Left Lower Arm Angle: $leftLowerArmAngle°');
-  print('Right Lower Arm Angle: $rightLowerArmAngle°');
-
-
-  // Calculate Total Lower Arm Score
-
-  // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
-  Vector2D chosenWrist;
-  Vector2D chosenElbow;
-
-  double distanceLeftWrist = leftWrist.distanceTo(chosen);
-  double distanceRightWrist = rightWrist.distanceTo(chosen);
-
-
-if (distanceLeftWrist < distanceRightWrist) {
-    chosenWrist = leftWrist;
-    chosenElbow = leftElbow;
-} else {
-    chosenWrist = rightWrist;
-    chosenElbow = rightElbow;
-}
-  double wristAngle = PostureCalculator.calculateWristAngle(
-    chosenWrist, chosenElbow, chosen
-);
-  
-    print('Wrist Angle: $wristAngle');
-
-
-    setState(() {
-      _keypointsMap[image] = keypoints;
-      _handKeypoints[image] = handkeypoints;
-    });
-  }
-
-
-  void _toggleKeypointsVisibility() {
-    setState(() {
-      _showKeypoints = !_showKeypoints;
-    });
-  }
-
-  @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('Multiple Image Picker and MoveNet'),
-      actions: [
-          IconButton(
-            icon: Icon(_showKeypoints ? Icons.visibility : Icons.visibility_off),
-            onPressed: _toggleKeypointsVisibility,
-            tooltip: _showKeypoints ? 'Hide Keypoints' : 'Show Keypoints',
-          ),
-        ],
-    ),
-    body: Column(
-      children: [
-        Expanded(
-          child: _images.isEmpty
-              ? Center(child: Text('No images selected or captured.'))
-              : ListView.builder(
-                  itemCount: _images.length,
-                  itemBuilder: (context, index) {
-                    final image = _images[index];
-                    final keypoints = _keypointsMap[image];
-                    final handkeypoints = _handKeypoints[image];
-                    print(keypoints);
-                    print(handkeypoints);
-                    // Original image dimensions
-                    final int originalWidth = image_lib.decodeImage(image.readAsBytesSync())!.width;
-                    final int originalHeight = image_lib.decodeImage(image.readAsBytesSync())!.height;
-
-                    // Calculate scaling and padding
-                    double scale = 256 / max(originalWidth, originalHeight);
-                    double newWidth = originalWidth * scale;
-                    double newHeight = originalHeight * scale;
-                    double paddingX = 256 - newWidth;
-                    double paddingY = 256 - newHeight;
-
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Display image with padding
-                          Container(
-                            width: 256,
-                            height: 256,
-                            color: Colors.black, // Background for padding
-                            child: Center(
-                              child: Image.file(
-                                image,
-                                width: newWidth,
-                                height: newHeight,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          // Draw keypoints on top of the image
-                          if (keypoints != null && _showKeypoints)
-                            CustomPaint(
-                              size: Size(256, 256),
-                              painter: KeypointsPainter(
-                                keypoints,
-                                paddingX,
-                                paddingY,
-                              ),
-                            ),
-                          if (handkeypoints != null)
-                            CustomPaint(
-                              size: Size(256, 256),
-                              painter: HandKeypointsPainter(
-                                handkeypoints,
-                                paddingX,
-                                paddingY,
-                              ),
-                            )
-                        ],
-                      ),
-                    );
-                  },
-                ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: _isModelReady
-                  ? () => _pickImage(ImageSource.gallery)
-                  : null,
-              child: Text('Add from Gallery'),
-            ),
-            SizedBox(width: 10),
-            ElevatedButton(
-              onPressed: _isModelReady
-                  ? () => _pickImage(ImageSource.camera)
-                  : null,
-              child: Text('Add from Camera'),
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-}
+Map<String, int> segmentScores = {};
 
 class Keypoint {
   final double x;
@@ -489,9 +162,9 @@ class KeypointsPainter extends CustomPainter {
         canvas.drawCircle(Offset(dx, dy), 2.0, paint);
 
         // Draw the keypoint label
-        // final label = keypointLabels[i];
+        final label = keypointLabels[i];
         final textSpan = TextSpan(
-          // text: label,
+          text: label,
           style: TextStyle(
             color: Colors.white,
             fontSize: 8,
@@ -662,4 +335,717 @@ class PostureCalculator {
     return angle;
   // }
   }
+}
+
+
+class ImagePickerScreen extends StatefulWidget {
+  @override
+  _ImagePickerScreenState createState() => _ImagePickerScreenState();
+}
+
+
+class _ImagePickerScreenState extends State<ImagePickerScreen> {
+  // List<File> _images = [];
+
+
+  final ImagePicker _picker = ImagePicker();
+  late MoveNetClassifier _moveNetClassifier;
+  bool _isModelReady = false;
+  // Map<File, List<Keypoint>> _keypointsMap = {};
+  bool _showKeypoints = true;
+  late HandClassifier _handClassifier;
+  // Map<File, List<Handkeypoint>> _handKeypoints = {};
+
+  Map<String, File?> _capturedImages = {}; // Each body part gets one image
+  Map<String, List<Keypoint>> _keypointsMap = {};
+  Map<String, List<Handkeypoint>> _handKeypoints = {};
+
+  List<String> _bodySegments = [
+    "Trunk & Neck",
+    "Legs & Posture",
+    "Force Load Score",
+    "Arm",
+    "Arm Supported",
+    "Wrist"
+    "Coupling Score",
+  ];
+
+int _currentStep = 0; // Start with the first step
+
+
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeClassifier();
+  }
+
+  Future<void> _initializeClassifier() async {
+    _moveNetClassifier = MoveNetClassifier();
+    _handClassifier = HandClassifier(numThreads: 4);
+    try {
+      print("Loading model...");
+      await _moveNetClassifier.loadModel();
+      setState(() {
+        _isModelReady = true;
+      });
+      print("Model is ready for use.");
+    } catch (e) {
+      print("Error initializing model: $e");
+    }
+
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await _picker.pickImage(source: source);
+
+    if (pickedFile != null && _isModelReady) {
+      final image = File(pickedFile.path);
+      // String currentSegment = [_bodySegments[_currentStep]];
+
+      setState(() {
+        _capturedImages[_bodySegments[_currentStep]] = image;
+      });
+      await _predict(image, _bodySegments[_currentStep]);
+    } else if (!_isModelReady) {
+      print("Model is not ready yet!");
+    } else {
+      print("No image selected.");
+    }
+  }
+
+  Future<void> _predict(File image, String segment) async {
+    final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
+
+    List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
+    // await _handClassifier.loadModel();
+    List<Handkeypoint> handkeypoints = [];
+    print(segment);
+  if (segment.toLowerCase() == "wrist") {
+    handkeypoints = await _handClassifier.processAndRunModel(imageInput);
+
+    // Ensure the hand keypoints list is not empty
+    if (handkeypoints.isEmpty) {
+      debugPrint("Warning: No hand keypoints detected for segment: $segment");
+    }
+  }
+
+
+
+
+
+
+
+  
+    // Convert keypoints to Vector2D
+  Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
+  Vector2D leftEye = Vector2D(keypoints[1].x, keypoints[1].y);
+  Vector2D leftEar = Vector2D(keypoints[3].x, keypoints[3].y);
+  Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
+  Vector2D leftElbow = Vector2D(keypoints[7].x, keypoints[7].y);
+  Vector2D leftWrist = Vector2D(keypoints[9].x, keypoints[9].y);
+  Vector2D leftHip = Vector2D(keypoints[11].x, keypoints[11].y);
+  Vector2D leftKnee = Vector2D(keypoints[13].x, keypoints[13].y);
+  Vector2D leftAnkle = Vector2D(keypoints[15].x, keypoints[15].y);
+
+  Vector2D rightEye = Vector2D(keypoints[2].x, keypoints[2].y);
+  Vector2D rightEar = Vector2D(keypoints[4].x, keypoints[4].y);
+  Vector2D rightShoulder = Vector2D(keypoints[6].x, keypoints[6].y);
+  Vector2D rightElbow = Vector2D(keypoints[8].x, keypoints[8].y);
+  Vector2D rightWrist = Vector2D(keypoints[10].x, keypoints[10].y);
+  Vector2D rightHip = Vector2D(keypoints[12].x, keypoints[12].y);
+  Vector2D rightKnee = Vector2D(keypoints[14].x, keypoints[14].y);
+  Vector2D rightAnkle = Vector2D(keypoints[16].x, keypoints[16].y);
+
+  Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
+  Vector2D midHip = (leftHip + rightHip) / 2;
+  Vector2D midKnee = (leftKnee + rightKnee) /2;
+
+
+  
+
+
+
+  // Calculate angles
+  // A. Neck, Trunk, and Leg Analysis
+  // 1. Locate Neck Position (+1 jika 10-20, +2 jika 20 - infinite, +2 jika negatif infinite - 0)
+  if (segment.toLowerCase() == "trunk & neck"){
+  int neckScore = 0;
+
+  double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
+  print('Neck Angle: $neckAngle°');
+
+  if (neckAngle >=10 && neckAngle < 20){
+    neckScore +=1;
+  } else if (neckAngle > 20){
+    neckScore +=2;
+  } else if (neckAngle <=0){
+    neckScore +=2;
+  }
+  // 1.1 If Neck is twisted (+1 jika 5-infinite)
+  double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftEye, rightEye);
+  print('Neck Twisted : $neckTwisted');
+  if (neckTwisted >=5){
+    neckScore +=1;
+  }
+
+  // 1.2 If Neck is side bending (+1 jika 5-infinite)
+  var (neckbendingleft, neckbendingright) = PostureCalculator.calculateNeckBending(leftEar, midShoulder, leftShoulder, rightEar, rightShoulder);
+  print('Neck Bending Left: $neckbendingleft');
+  print('Neck Bending Right: $neckbendingright');
+
+  if (neckbendingleft>=5 || neckbendingright>=5){
+    neckScore +=1;
+  }
+    // Calculate Total Neck Score
+  segmentScores["neckScore"] = neckScore;
+  print('Total Neck Score: $neckScore');
+
+
+  // 2. Locate Trunk Position (+1 jika 0, +2 jika -infinite - 0, +2 jika 0 - 20, +3 jika 20 - 60, +4 jika 60 - infinite)
+  if (segment.toLowerCase() == "trunk & neck"){
+  int trunkScore = 0;
+
+  double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
+  print('Trunk Flexion Angle: $trunkFlexion');
+  if (trunkFlexion == 0){
+    trunkScore +=1;
+  } else if (trunkFlexion <0){
+    trunkScore +=2;
+  } else if (trunkFlexion >0 && trunkFlexion <=20){
+    trunkScore +=2;
+  } else if (trunkFlexion >20 && trunkFlexion<=60){
+    trunkScore +=3;
+  } else if (trunkFlexion >60){
+    trunkScore +=4;
+  }
+
+  // 2.1 If trunk is twisted (+1 jika 100 - infinite)
+  double trunkTwisting = PostureCalculator.calculateTrunkTwisting(rightShoulder, midHip, rightHip, leftShoulder, leftHip);
+  print('Trunk Twisting Angle: $trunkTwisting');
+
+  if (trunkTwisting >=100){
+    trunkScore +=1;
+  }
+
+  // 2.2 If trunk is bending (+1 jika -infinite - 85, +1 jika 95 - infinite)
+  var (leftbending, rightbending) = PostureCalculator.calculateTrunkBending(rightHip, midHip, midShoulder, leftHip);
+  print('Trunk Bending Left Angle: $leftbending');
+  print('Trunk Bending Right Angle: $rightbending');
+  if (leftbending <=85 || leftbending >=95 || rightbending <=85 || rightbending >=95){
+    trunkScore +=1;
+  }
+
+  segmentScores["trunkScore"] = trunkScore;
+  print('Total Trunk Score: $trunkScore');
+  
+  }
+  }
+  // Calculate Total Trunk Score
+
+  // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
+
+  if (segment.toLowerCase() == "legs & posture"){
+  int legScore = 0;
+
+  double legs = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
+  print('Leg Angle $legs');
+
+  if (legs <=5 && legs >=-5){
+    legScore += 1;
+  } else if (legs >5){
+    legScore +=2;
+  } else if (legs >=30 && legs<=60){
+    legScore +=1;
+  } else if (legs >60){
+    legScore +=2;
+  }
+    segmentScores['legScore'] = legScore;
+    print('Total Leg Score : $legScore');
+  }
+
+  // Calculate Total Legs Score 
+
+  // 4. Total score from 1-3
+  // int postureScoreA = segmentScores['neckScore'] + segmentScores['trunkScore'] + segmentScores['legScore'];
+  
+  // 5. Input for load/lbs,
+  
+  // +0 jika load <11 lbs, +1 jika load 11-22 lbs, +2 jika load >22 lbs
+  // +1 jika shock or rapid build up force
+
+  // 6. Total score 4 + 5 
+
+  // B. Arm and Wrist Analysis
+  // 7. Locate Upper Arm Position (+1 jika -20 -20, +2 jika -infinite - -20, +2 jika 20-45, +3 jika 45-90, +4 jika 90 - infinite)
+  if (segment.toLowerCase() == "arm"){
+  int upperArmScore = 0;
+  int lowerArmScore = 0;
+
+  var (leftUpperArmAngle, rightupperArmAngle) = PostureCalculator.calculateUpperArmAngle(
+    leftElbow, leftShoulder, leftHip,
+    rightElbow, rightShoulder, rightHip,
+  );
+  print('Left Upper Arm Angle: $leftUpperArmAngle°');
+  print('Right Upper Arm Angle: $rightupperArmAngle');
+  if ((leftUpperArmAngle >= -20 && leftUpperArmAngle <= 20) || 
+      (rightupperArmAngle >= -20 && rightupperArmAngle <= 20)) {
+    upperArmScore += 1;
+  } else if ((leftUpperArmAngle < -20) || (rightupperArmAngle < -20)) {
+    upperArmScore += 2;
+  } else if ((leftUpperArmAngle > 20 && leftUpperArmAngle <= 45) || 
+             (rightupperArmAngle > 20 && rightupperArmAngle <= 45)) {
+    upperArmScore += 2;
+  } else if ((leftUpperArmAngle > 45 && leftUpperArmAngle <= 90) || 
+             (rightupperArmAngle > 45 && rightupperArmAngle <= 90)) {
+    upperArmScore += 3;
+  } else if ((leftUpperArmAngle > 90) || (rightupperArmAngle > 90)) {
+    upperArmScore += 4;
+  }
+  
+  // 7.1 If shoulder is raised +1 >30
+  var (statusshoulderraised, shoulderraiseddegree) = PostureCalculator.calculateShoulderRaised(leftShoulder, rightShoulder);
+  print(statusshoulderraised);
+  print('Diff: $shoulderraiseddegree');
+  if (shoulderraiseddegree >=30){
+   upperArmScore +=1;
+  }
+
+  // 7.2 If upper arm is abducted +1 >110
+  var (statusabducted, upperarmabducteddegree) = PostureCalculator.calculateUpperArmAbducted(leftShoulder, leftElbow, midShoulder, rightShoulder, rightElbow);
+  print(statusabducted);
+  print('Diff: $upperarmabducteddegree');
+  if (upperarmabducteddegree >=110){
+    upperArmScore +=1;
+  }
+  
+  segmentScores ['upperArmScore'] = upperArmScore;
+  print('Total Upper Arm Score: $upperArmScore');
+
+  // 7.3 If arm is supported or person is leaning +1
+
+  // input
+
+  
+
+  // Calculate Total Upper Arm Score
+
+  // 8. Locate Lower Arm Position (+1 jika 60-100, +2 jika -infinite - 60 + 2 jika 100 - infinite)
+  var (leftLowerArmAngle, rightLowerArmAngle) = PostureCalculator.calculateLowerArmAngle(
+    leftElbow, leftWrist, leftShoulder,
+    rightElbow, rightWrist, rightShoulder,
+  );
+  print('Left Lower Arm Angle: $leftLowerArmAngle°');
+  print('Right Lower Arm Angle: $rightLowerArmAngle°');
+  if ((leftLowerArmAngle >= 60 && leftLowerArmAngle <= 100) || 
+      (rightLowerArmAngle >= 60 && rightLowerArmAngle <= 100)) {
+    lowerArmScore += 1;
+  } else if ((leftLowerArmAngle < 60) || (rightLowerArmAngle < 60)) {
+    lowerArmScore += 2;
+  } else if ((leftLowerArmAngle > 100) || (rightLowerArmAngle > 100)) {
+    lowerArmScore += 2;
+  }
+
+  segmentScores ['lowerArmScore'] = lowerArmScore;
+  print('Total Lower Arm Score: $lowerArmScore');
+  // Calculate Total Lower Arm Score
+
+  }
+
+  // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
+
+
+ if (handkeypoints.isNotEmpty) {
+  double maxX = handkeypoints[0].x;
+  int maxIndex = 0;
+
+  for (int i = 0; i < handkeypoints.length; i++) {
+    if (handkeypoints[i].x > maxX) {
+      maxX = handkeypoints[i].x;
+      maxIndex = i;
+    }
+  }
+
+  Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
+  print('Chosen: $chosen');
+
+   Vector2D chosenWrist;
+  Vector2D chosenElbow;
+
+  double distanceLeftWrist = leftWrist.distanceTo(chosen);
+  double distanceRightWrist = rightWrist.distanceTo(chosen);
+
+
+if (distanceLeftWrist < distanceRightWrist) {
+    chosenWrist = leftWrist;
+    chosenElbow = leftElbow;
+} else {
+    chosenWrist = rightWrist;
+    chosenElbow = rightElbow;
+}
+  double wristAngle = PostureCalculator.calculateWristAngle(
+    chosenWrist, chosenElbow, chosen
+);
+  
+    print('Wrist Angle: $wristAngle');
+
+if (segment.toLowerCase() == "wrist"){
+  int wristScore = 0;
+  if (wristAngle >=-15 && wristAngle <=15){
+    wristScore +=1;
+  } else if (wristAngle <-15 && wristAngle >15){
+    wristScore +=2;
+  }
+  segmentScores['wristScore'] = wristScore;
+  print('Total Wrist Score: $wristScore');
+}
+
+
+} else {
+  debugPrint("Warning: No hand keypoints detected, skipping wrist angle calculation.");
+}
+
+
+    setState(() {
+      _keypointsMap[segment] = keypoints;
+    if (segment.toLowerCase() == "wrist") {
+    _handKeypoints[segment] = handkeypoints.isNotEmpty ? handkeypoints : [];
+  } else {
+    _handKeypoints.remove(segment); // Remove hand keypoints for non-wrist segments
+  }
+});
+}
+
+  
+  void _nextSegment() {
+    if (_currentStep < _bodySegments.length - 1) {
+      setState(() {
+        _currentStep++;
+      });
+    } else {
+      print("All images captured! Ready for REBA calculation.");
+    }
+  }
+
+
+  void _toggleKeypointsVisibility() {
+    setState(() {
+      _showKeypoints = !_showKeypoints;
+    });
+  }
+
+  @override
+Widget build(BuildContext context) {
+  String currentSegment = _bodySegments[_currentStep];
+
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('MoveNet Keypoints for $currentSegment'),
+    ),
+    body: Padding(
+  padding: const EdgeInsets.all(8.0),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (currentSegment.toLowerCase() == "force load score") ...[
+        Text(
+          "Enter Force/Load (kg):",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        TextField(
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: "Load in kg",
+            border: OutlineInputBorder(),
+          ),
+          onChanged: (value) {
+            setState(() {
+              double load = double.tryParse(value) ?? 0;
+              segmentScores["forceLoad"] = (load < 5) ? 0 : (load <= 10) ? 1 : 2;
+              print(segmentScores);
+            });
+          },
+        ),
+        SizedBox(height: 15),
+        Text(
+          "Is there a shock or rapid build-up of force?",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        CheckboxListTile(
+          title: Text("Yes (+1)"),
+          value: segmentScores["shockAdded"] == 1,
+          onChanged: (bool? value) {
+            setState(() {
+              if (value == true) {
+                segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
+                segmentScores["shockAdded"] = 1;
+              } else {
+                segmentScores["shockAdded"] = 0;
+              }
+              print(segmentScores);
+            });
+          },
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: _nextSegment,
+          child: Text('Continue to Next Segment'),
+        ),
+      ]else if (currentSegment.toLowerCase() == "arm supported") ...[
+        Text("Is the arm supported or person leaning?"),
+        Row(
+          children: [
+            Radio(
+              value: -1,
+              groupValue: segmentScores["armSupport"] ?? 0,
+              onChanged: (int? value) {
+                setState(() {
+                  segmentScores["armSupport"] = value ?? 0;
+                });
+              },
+            ),
+            Text("Yes"),
+            Radio(
+              value: 0,
+              groupValue: segmentScores["armSupport"] ?? 0,
+              onChanged: (int? value) {
+                setState(() {
+                  segmentScores["armSupport"] = value ?? 0;
+                  print(segmentScores);
+                });
+              },
+            ),
+            Text("No"),
+          ],
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: _nextSegment,
+          child: Text('Continue to Next Segment'),
+        ),
+      ] else if (currentSegment.toLowerCase() == "coupling score") ...[
+        Text("Select Coupling Quality:"),
+        DropdownButton<int>(
+          value: segmentScores["coupling"] ?? 0,
+          items: [
+            DropdownMenuItem(value: 0, child: Text("Good")),
+            DropdownMenuItem(value: 1, child: Text("Fair")),
+            DropdownMenuItem(value: 2, child: Text("Poor")),
+          ],
+          onChanged: (value) {
+            setState(() {
+              segmentScores["coupling"] = value!;
+              print(segmentScores);
+            });
+          },
+        ),
+      ] else ...[
+  
+        Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: Text(
+            "Segment: $currentSegment",
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+        
+        _capturedImages[currentSegment] != null
+            ? Builder(builder: (context) {
+                // Read the image dimensions
+                final imageFile = _capturedImages[currentSegment]!;
+                final int originalWidth = image_lib.decodeImage(imageFile.readAsBytesSync())!.width;
+                final int originalHeight = image_lib.decodeImage(imageFile.readAsBytesSync())!.height;
+
+                // Scale image to fit inside 256x256
+                double scale = 256 / max(originalWidth, originalHeight);
+                double newWidth = originalWidth * scale;
+                double newHeight = originalHeight * scale;
+                double paddingX = (256 - newWidth) / 2;
+                double paddingY = (256 - newHeight) / 2;
+
+                return Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Ensure the image is always inside a 256x256 box
+                    Container(
+                      width: 256,
+                      height: 256,
+                      color: Colors.black, // Background padding
+                      child: Center(
+                        child: Image.file(
+                          imageFile,
+                          width: newWidth,
+                          height: newHeight,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    // Draw keypoints correctly on top
+                    
+                      if (_keypointsMap[currentSegment] != null && _showKeypoints)
+                        CustomPaint(
+                          size: Size(256, 256),
+                          painter: KeypointsPainter(
+                            _keypointsMap[currentSegment]!,
+                            paddingX,
+                            paddingY,
+                          ),
+                        ),
+                      if (currentSegment.toLowerCase() == "wrist" &&
+    _handKeypoints[currentSegment] != null &&
+    _handKeypoints[currentSegment]!.isNotEmpty &&
+    _showKeypoints)
+                        CustomPaint(
+                          size: Size(256, 256),
+                          painter: HandKeypointsPainter(
+                            _handKeypoints[currentSegment]!,
+                            paddingX,
+                            paddingY,
+                          ),
+                        ),
+                  ],
+                );
+              })
+            : Center(child: Text("No image captured for $currentSegment")),
+// if (currentSegment.toLowerCase() == "force load") ...[
+//   Padding(
+//     padding: const EdgeInsets.all(8.0),
+//     child: Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Text(
+//           "Enter Force/Load (kg):",
+//           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+//         ),
+
+//         // Input for Force Load in kg
+//         TextField(
+//           keyboardType: TextInputType.number,
+//           decoration: InputDecoration(
+//             labelText: "Load in kg",
+//             border: OutlineInputBorder(),
+//           ),
+//           onChanged: (value) {
+//             setState(() {
+//               double load = double.tryParse(value) ?? 0;
+//               segmentScores["forceLoad"] = (load < 5) ? 0 : (load <= 10) ? 1 : 2;
+//               print(segmentScores);
+//             });
+//           },
+//         ),
+
+//         SizedBox(height: 15),
+
+//         Text(
+//           "Is there a shock or rapid build-up of force?",
+//           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+//         ),
+
+//         // Checkbox that only adds +1 (doesn't subtract if unchecked)
+//         CheckboxListTile(
+//           title: Text("Yes (+1)"),
+//           value: segmentScores["shockAdded"] == true, // Track if added
+//           onChanged: (bool? value) {
+//             setState(() {
+//               if (value == true) {
+//                 segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
+//                 segmentScores["shockAdded"] = 1; // Track that shock was added
+//               } else {
+//                 segmentScores["shockAdded"] = 0; // No subtraction, just track false
+//               }
+//               print(segmentScores);
+//             });
+//           },
+//         ),
+//       ],
+//     ),
+//   ),
+// ],
+
+//         if (currentSegment.toLowerCase() == "arm supported") ...[
+//           Padding(
+//             padding: const EdgeInsets.all(8.0),
+//             child: Column(
+//               children: [
+//                 Text("Is the arm supported or person leaning?"),
+//                 Row(
+//                   children: [
+//                     Radio(
+//                       value: -1,
+//                       groupValue: segmentScores["armSupport"] ?? 0,
+//                       onChanged: (int? value) {
+//                         setState(() {
+//                           segmentScores["armSupport"] = value ?? 0;
+//                         });
+//                       },
+//                     ),
+//                     Text("Yes"),
+//                     Radio(
+//                       value: 0,
+//                       groupValue: segmentScores["armSupport"] ?? 0,
+//                       onChanged: (int? value) {
+//                         setState(() {
+//                           segmentScores["armSupport"] = value ?? 0;
+//                           print(segmentScores);
+//                         });
+//                       },
+//                     ),
+//                     Text("No"),
+//                   ],
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+
+//         if (currentSegment.toLowerCase() == "coupling score") ...[
+//           Padding(
+//             padding: const EdgeInsets.all(8.0),
+//             child: Column(
+//               children: [
+//                 Text("Select Coupling Quality:"),
+//                 DropdownButton<int>(
+//                   value: segmentScores["coupling"] ?? 0,
+//                   items: [
+//                     DropdownMenuItem(value: 0, child: Text("Good")),
+//                     DropdownMenuItem(value: 1, child: Text("Fair")),
+//                     DropdownMenuItem(value: 2, child: Text("Poor")),
+//                   ],
+//                   onChanged: (value) {
+//                     setState(() {
+//                       segmentScores["coupling"] = value!;
+//                       print(segmentScores);
+//                     });
+//                   },
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
+              child: Text('Add from Gallery'),
+            ),
+            SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
+              child: Text('Add from Camera'),
+            ),
+          ],
+        ),
+        SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: _capturedImages[currentSegment] != null
+              ? _nextSegment
+              : null,
+          child: Text('Confirm and Next'),
+       ),
+      ]
+    ],
+  ),
+));
+}
 }
