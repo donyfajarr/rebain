@@ -1,39 +1,21 @@
 import 'dart:math';
-// import 'dart:typed_data';
-
-
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart';
-// import 'package:logger/logger.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
 import 'input.dart';
-// import 'calculate.dart';
-// import 'package:camera/camera.dart';
 
 
 class HandClassifier {
   late Interpreter interpreter;
   late InterpreterOptions _interpreterOptions;
-
-  // var logger = Logger();
-
   late List<int> _inputShape;
   late List<int> _outputShape;
-
-  // late ImageProcessor imageProcessor;
-  // late TensorImage inputImage;
-
   late TensorBuffer _outputBuffer;
-  // late List<Object> inputa = [];
-  // Map<int, Object> outputs = {};
 
-  // TensorBuffer outputLocations = TensorBufferFloat([]);
   final int inputSize = 224; // Input size for the MediaPipe Hands model
   final double scoreThreshold = 0.3; // Confidence threshold for hand detection
   final double existThreshold = 0.1;
-
-
 
   late TensorType _inputType;
   late TensorType _outputType;
@@ -51,9 +33,8 @@ class HandClassifier {
   Future<void> loadModel() async {
     try {
       interpreter = await Interpreter.fromAsset(
-        // 'assets/movenetflt32.tflite', //SinglePoseThunderInputFloat32OutputFloat32
         'assets/hand_landmark.tflite',
-        // 'assets/MediaPipeHandLandmarkDetector.tflite', //SinglePoseThunderInputUint8OutputFloat32
+        // 'assets/MediaPipeHandLandmarkDetector.tflite', //quallcomm 256x256
         options: _interpreterOptions,
       );
       print('Interpreter Created Successfully $interpreter');
@@ -161,12 +142,6 @@ Future<List<Handkeypoint>> processAndRunModel(Image imageFile) async {
       print(reshapedInput.shape);
       // Run inference
       try {
-  print('Checking interpreter: $interpreter');
-  // if (interpreter == null) {
-  //   print('Interpreter is null before inference.');
-  //   return[];
-  // }
-
   print('Running inference...');
 
   interpreter.run(reshapedInput, _outputBuffer.buffer); 
@@ -177,12 +152,7 @@ Future<List<Handkeypoint>> processAndRunModel(Image imageFile) async {
   print('Stacktrace: $stacktrace');
 }
       // Get output data
-      // final outputTest = _outputBuffer;
-      // print(outputTest.);
       final outputData = _outputBuffer.getDoubleList();
-      // print(outputData.length);
-      // print (outputData.length);
-
 
       debugPrint('Output Raw : $outputData');
       print(outputData.length);
@@ -210,10 +180,6 @@ List<Handkeypoint> parseKeypoints(List<double> modelOutput, double imageWidth, d
 
 
     handkeypoints.add(Handkeypoint(normalizedX, normalizedY, confidence));
-
-    // if (confidence >= scoreThreshold){
-    //   handkeypoints.add(Handkeypoint(normalizedX, normalizedY, confidence));
-    // }
 
     
   } 

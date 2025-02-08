@@ -5,9 +5,7 @@ import 'package:image/image.dart' as image_lib;
 import 'classifier.dart';
 import 'handclassifier.dart';
 import 'dart:math';
-
-
-
+import 'report.dart';
 
 Map<String, int> segmentScores = {};
 
@@ -190,8 +188,6 @@ class KeypointsPainter extends CustomPainter {
   }
 }
 
-
-
 double calculateAngle(
     Map<String, double> pointA, Map<String, double> pointB, Map<String, double> pointC) {
   final ax = pointA['x']!;
@@ -337,24 +333,17 @@ class PostureCalculator {
   }
 }
 
-
 class ImagePickerScreen extends StatefulWidget {
   @override
   _ImagePickerScreenState createState() => _ImagePickerScreenState();
 }
 
-
 class _ImagePickerScreenState extends State<ImagePickerScreen> {
-  // List<File> _images = [];
-
-
   final ImagePicker _picker = ImagePicker();
   late MoveNetClassifier _moveNetClassifier;
   bool _isModelReady = false;
-  // Map<File, List<Keypoint>> _keypointsMap = {};
   bool _showKeypoints = true;
   late HandClassifier _handClassifier;
-  // Map<File, List<Handkeypoint>> _handKeypoints = {};
 
   Map<String, File?> _capturedImages = {}; // Each body part gets one image
   Map<String, List<Keypoint>> _keypointsMap = {};
@@ -366,11 +355,12 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     "Force Load Score",
     "Arm",
     "Arm Supported",
-    "Wrist"
+    "Wrist",
     "Coupling Score",
+    "Activity Score",
   ];
 
-int _currentStep = 0; // Start with the first step
+int _currentStep = 0; 
 
 
 
@@ -418,25 +408,28 @@ int _currentStep = 0; // Start with the first step
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
 
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
-    // await _handClassifier.loadModel();
+    
     List<Handkeypoint> handkeypoints = [];
-    print(segment);
+    print('Segment $segment');
   if (segment.toLowerCase() == "wrist") {
     handkeypoints = await _handClassifier.processAndRunModel(imageInput);
-
-    // Ensure the hand keypoints list is not empty
     if (handkeypoints.isEmpty) {
       debugPrint("Warning: No hand keypoints detected for segment: $segment");
     }
   }
 
-
-
-
-
-
-
+  setState(() {
   
+  _keypointsMap[segment] = keypoints;
+  
+  if (segment.toLowerCase() == "wrist") {
+    _handKeypoints[segment] = handkeypoints.isNotEmpty ? handkeypoints : [];
+  } else {
+    _handKeypoints.remove(segment); // Remove hand keypoints for non-wrist segments
+  }
+  print('Keypoint for $segment : ${_keypointsMap[segment]}');
+});
+
     // Convert keypoints to Vector2D
   Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
   Vector2D leftEye = Vector2D(keypoints[1].x, keypoints[1].y);
@@ -460,11 +453,6 @@ int _currentStep = 0; // Start with the first step
   Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
   Vector2D midHip = (leftHip + rightHip) / 2;
   Vector2D midKnee = (leftKnee + rightKnee) /2;
-
-
-  
-
-
 
   // Calculate angles
   // A. Neck, Trunk, and Leg Analysis
@@ -536,13 +524,13 @@ int _currentStep = 0; // Start with the first step
     trunkScore +=1;
   }
 
+  // Calculate Total Trunk Score
   segmentScores["trunkScore"] = trunkScore;
   print('Total Trunk Score: $trunkScore');
   
   }
   }
-  // Calculate Total Trunk Score
-
+  
   // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
 
   if (segment.toLowerCase() == "legs & posture"){
@@ -560,11 +548,12 @@ int _currentStep = 0; // Start with the first step
   } else if (legs >60){
     legScore +=2;
   }
+
+    // Calculate Total Legs Score 
     segmentScores['legScore'] = legScore;
     print('Total Leg Score : $legScore');
   }
 
-  // Calculate Total Legs Score 
 
   // 4. Total score from 1-3
   // int postureScoreA = segmentScores['neckScore'] + segmentScores['trunkScore'] + segmentScores['legScore'];
@@ -654,8 +643,8 @@ int _currentStep = 0; // Start with the first step
 
   // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
 
+  if (segment.toLowerCase() == 'wrist'){
 
- if (handkeypoints.isNotEmpty) {
   double maxX = handkeypoints[0].x;
   int maxIndex = 0;
 
@@ -667,10 +656,11 @@ int _currentStep = 0; // Start with the first step
   }
 
   Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
+  Vector2D chosenWrist;
+  Vector2D chosenElbow;
   print('Chosen: $chosen');
 
-   Vector2D chosenWrist;
-  Vector2D chosenElbow;
+  
 
   double distanceLeftWrist = leftWrist.distanceTo(chosen);
   double distanceRightWrist = rightWrist.distanceTo(chosen);
@@ -681,11 +671,9 @@ if (distanceLeftWrist < distanceRightWrist) {
     chosenElbow = leftElbow;
 } else {
     chosenWrist = rightWrist;
-    chosenElbow = rightElbow;
-}
-  double wristAngle = PostureCalculator.calculateWristAngle(
-    chosenWrist, chosenElbow, chosen
-);
+    chosenElbow = rightElbow;}
+
+  double wristAngle = PostureCalculator.calculateWristAngle(chosenWrist, chosenElbow, chosen);
   
     print('Wrist Angle: $wristAngle');
 
@@ -698,35 +686,36 @@ if (segment.toLowerCase() == "wrist"){
   }
   segmentScores['wristScore'] = wristScore;
   print('Total Wrist Score: $wristScore');
+};
+}
 }
 
-
-} else {
-  debugPrint("Warning: No hand keypoints detected, skipping wrist angle calculation.");
-}
-
-
-    setState(() {
-      _keypointsMap[segment] = keypoints;
-    if (segment.toLowerCase() == "wrist") {
-    _handKeypoints[segment] = handkeypoints.isNotEmpty ? handkeypoints : [];
-  } else {
-    _handKeypoints.remove(segment); // Remove hand keypoints for non-wrist segments
-  }
-});
-}
-
-  
   void _nextSegment() {
     if (_currentStep < _bodySegments.length - 1) {
       setState(() {
         _currentStep++;
       });
     } else {
-      print("All images captured! Ready for REBA calculation.");
-    }
+    // Navigate to the REBA report screen when reaching the last segment
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RebaReportScreen(
+          segmentScores: segmentScores,
+          capturedImages: _capturedImages,
+        ),
+      ),
+    );
   }
+}
 
+void _previousSegment() {
+  if (_currentStep > 0) {
+    setState(() {
+      _currentStep--;
+    });
+  }
+}
 
   void _toggleKeypointsVisibility() {
     setState(() {
@@ -801,6 +790,7 @@ Widget build(BuildContext context) {
               onChanged: (int? value) {
                 setState(() {
                   segmentScores["armSupport"] = value ?? 0;
+                  print(segmentScores);
                 });
               },
             ),
@@ -839,7 +829,101 @@ Widget build(BuildContext context) {
             });
           },
         ),
-      ] else ...[
+          SizedBox(height: 20),
+            ElevatedButton(
+          onPressed: _nextSegment,
+          child: Text('Continue to Next Segment'),
+        ),
+        
+      ]else if (currentSegment.toLowerCase() == "activity score") ...[
+  Text("Select Activity Score:"),
+
+  // 1st Condition
+  Text(
+    "1 or more body parts are held for longer than 1 minute (static)",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  ),
+  CheckboxListTile(
+    title: Text("Yes (+1)"),
+    value: segmentScores["staticPosture"] == 1,
+    onChanged: (bool? value) {
+      setState(() {
+        if (value == true) {
+          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + 1;
+          segmentScores["staticPosture"] = 1;
+        } else {
+          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) - 1;
+          segmentScores["staticPosture"] = 0;
+        }
+        print(segmentScores);
+      });
+    },
+  ),
+
+  SizedBox(height: 20),
+
+  // 2nd Condition
+  Text(
+    "Repeated small range actions (more than 4x per minute)",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  ),
+  CheckboxListTile(
+    title: Text("Yes (+1)"),
+    value: segmentScores["repeatedAction"] == 1,
+    onChanged: (bool? value) {
+      setState(() {
+        if (value == true) {
+          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + 1;
+          segmentScores["repeatedAction"] = 1;
+        } else {
+          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) - 1;
+          segmentScores["repeatedAction"] = 0;
+        }
+        print(segmentScores);
+      });
+    },
+  ),
+
+  SizedBox(height: 20),
+
+  // 3rd Condition
+  Text(
+    "Action causes rapid large range changes in postures or unstable base",
+    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  ),
+  CheckboxListTile(
+    title: Text("Yes (+1)"),
+    value: segmentScores["unstableBase"] == 1,
+    onChanged: (bool? value) {
+      setState(() {
+        if (value == true) {
+          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + 1;
+          segmentScores["unstableBase"] = 1;
+        } else {
+          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) - 1;
+          segmentScores["unstableBase"] = 0;
+        }
+        print(segmentScores);
+      });
+    },
+  ),
+        SizedBox(height:20),
+           ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+        MaterialPageRoute(
+          builder: (context) => RebaReportScreen(
+            segmentScores: segmentScores,
+            capturedImages: _capturedImages,
+          ),
+              ),
+           );
+           },
+           child: Text("Confirm & Review Assessment"),
+           )
+      ]      
+      else ...[
   
         Padding(
           padding: const EdgeInsets.all(10.0),
@@ -862,6 +946,7 @@ Widget build(BuildContext context) {
                 double newHeight = originalHeight * scale;
                 double paddingX = (256 - newWidth) / 2;
                 double paddingY = (256 - newHeight) / 2;
+                print('Keypoint Current : $_keypointsMap');
 
                 return Stack(
                   alignment: Alignment.center,
@@ -882,7 +967,8 @@ Widget build(BuildContext context) {
                     ),
                     // Draw keypoints correctly on top
                     
-                      if (_keypointsMap[currentSegment] != null && _showKeypoints)
+                      if (_keypointsMap[currentSegment] != null)
+                      
                         CustomPaint(
                           size: Size(256, 256),
                           painter: KeypointsPainter(
@@ -907,124 +993,13 @@ Widget build(BuildContext context) {
                 );
               })
             : Center(child: Text("No image captured for $currentSegment")),
-// if (currentSegment.toLowerCase() == "force load") ...[
-//   Padding(
-//     padding: const EdgeInsets.all(8.0),
-//     child: Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Text(
-//           "Enter Force/Load (kg):",
-//           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-//         ),
-
-//         // Input for Force Load in kg
-//         TextField(
-//           keyboardType: TextInputType.number,
-//           decoration: InputDecoration(
-//             labelText: "Load in kg",
-//             border: OutlineInputBorder(),
-//           ),
-//           onChanged: (value) {
-//             setState(() {
-//               double load = double.tryParse(value) ?? 0;
-//               segmentScores["forceLoad"] = (load < 5) ? 0 : (load <= 10) ? 1 : 2;
-//               print(segmentScores);
-//             });
-//           },
-//         ),
-
-//         SizedBox(height: 15),
-
-//         Text(
-//           "Is there a shock or rapid build-up of force?",
-//           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-//         ),
-
-//         // Checkbox that only adds +1 (doesn't subtract if unchecked)
-//         CheckboxListTile(
-//           title: Text("Yes (+1)"),
-//           value: segmentScores["shockAdded"] == true, // Track if added
-//           onChanged: (bool? value) {
-//             setState(() {
-//               if (value == true) {
-//                 segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
-//                 segmentScores["shockAdded"] = 1; // Track that shock was added
-//               } else {
-//                 segmentScores["shockAdded"] = 0; // No subtraction, just track false
-//               }
-//               print(segmentScores);
-//             });
-//           },
-//         ),
-//       ],
-//     ),
-//   ),
-// ],
-
-//         if (currentSegment.toLowerCase() == "arm supported") ...[
-//           Padding(
-//             padding: const EdgeInsets.all(8.0),
-//             child: Column(
-//               children: [
-//                 Text("Is the arm supported or person leaning?"),
-//                 Row(
-//                   children: [
-//                     Radio(
-//                       value: -1,
-//                       groupValue: segmentScores["armSupport"] ?? 0,
-//                       onChanged: (int? value) {
-//                         setState(() {
-//                           segmentScores["armSupport"] = value ?? 0;
-//                         });
-//                       },
-//                     ),
-//                     Text("Yes"),
-//                     Radio(
-//                       value: 0,
-//                       groupValue: segmentScores["armSupport"] ?? 0,
-//                       onChanged: (int? value) {
-//                         setState(() {
-//                           segmentScores["armSupport"] = value ?? 0;
-//                           print(segmentScores);
-//                         });
-//                       },
-//                     ),
-//                     Text("No"),
-//                   ],
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-
-//         if (currentSegment.toLowerCase() == "coupling score") ...[
-//           Padding(
-//             padding: const EdgeInsets.all(8.0),
-//             child: Column(
-//               children: [
-//                 Text("Select Coupling Quality:"),
-//                 DropdownButton<int>(
-//                   value: segmentScores["coupling"] ?? 0,
-//                   items: [
-//                     DropdownMenuItem(value: 0, child: Text("Good")),
-//                     DropdownMenuItem(value: 1, child: Text("Fair")),
-//                     DropdownMenuItem(value: 2, child: Text("Poor")),
-//                   ],
-//                   onChanged: (value) {
-//                     setState(() {
-//                       segmentScores["coupling"] = value!;
-//                       print(segmentScores);
-//                     });
-//                   },
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            
+
+            // Next Button (navigates to the REBA report on the last segment)
+         
             ElevatedButton(
               onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
               child: Text('Add from Gallery'),
@@ -1036,12 +1011,18 @@ Widget build(BuildContext context) {
             ),
           ],
         ),
+        if (_currentStep > 0)
+              ElevatedButton(
+                onPressed: _previousSegment,
+                child: Text("Back"),
+              ),
+              
         SizedBox(height: 20),
         ElevatedButton(
           onPressed: _capturedImages[currentSegment] != null
               ? _nextSegment
               : null,
-          child: Text('Confirm and Next'),
+          child: Text(_currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next"),
        ),
       ]
     ],

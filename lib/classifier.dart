@@ -5,28 +5,6 @@ import 'package:image/image.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
 import 'input.dart';
-// import 'calculate.dart';
-// import 'package:camera/camera.dart';
-
-// List<String> keypointLabels = [
-//   "Nose",
-//   "Left eye",
-//   "Right eye",
-//   "Left ear",
-//   "Right ear",
-//   "Left shoulder",
-//   "Right shoulder",
-//   "Left elbow",
-//   "Right elbow",
-//   "Left wrist",
-//   "Right wrist",
-//   "Left hip",
-//   "Right hip",
-//   "Left knee",
-//   "Right knee",
-//   "Left ankle",
-//   "Right ankle"
-// ];
 
 class MoveNetClassifier {
   late Interpreter interpreter;
