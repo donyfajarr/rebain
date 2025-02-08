@@ -701,7 +701,7 @@ if (segment.toLowerCase() == "wrist"){
       context,
       MaterialPageRoute(
         builder: (context) => RebaReportScreen(
-          segmentScores: segmentScores,
+          bodyPartScores: segmentScores,
           capturedImages: _capturedImages,
         ),
       ),
@@ -780,6 +780,11 @@ Widget build(BuildContext context) {
           onPressed: _nextSegment,
           child: Text('Continue to Next Segment'),
         ),
+        if (_currentStep > 0)
+              ElevatedButton(
+                onPressed: _previousSegment,
+                child: Text("Back"),
+              ),
       ]else if (currentSegment.toLowerCase() == "arm supported") ...[
         Text("Is the arm supported or person leaning?"),
         Row(
@@ -813,6 +818,11 @@ Widget build(BuildContext context) {
           onPressed: _nextSegment,
           child: Text('Continue to Next Segment'),
         ),
+        if (_currentStep > 0)
+              ElevatedButton(
+                onPressed: _previousSegment,
+                child: Text("Back"),
+              ),
       ] else if (currentSegment.toLowerCase() == "coupling score") ...[
         Text("Select Coupling Quality:"),
         DropdownButton<int>(
@@ -834,7 +844,11 @@ Widget build(BuildContext context) {
           onPressed: _nextSegment,
           child: Text('Continue to Next Segment'),
         ),
-        
+        if (_currentStep > 0)
+              ElevatedButton(
+                onPressed: _previousSegment,
+                child: Text("Back"),
+              ),
       ]else if (currentSegment.toLowerCase() == "activity score") ...[
   Text("Select Activity Score:"),
 
@@ -914,14 +928,19 @@ Widget build(BuildContext context) {
                 context,
         MaterialPageRoute(
           builder: (context) => RebaReportScreen(
-            segmentScores: segmentScores,
+            bodyPartScores: segmentScores,
             capturedImages: _capturedImages,
           ),
               ),
            );
            },
            child: Text("Confirm & Review Assessment"),
-           )
+           ),
+           if (_currentStep > 0)
+              ElevatedButton(
+                onPressed: _previousSegment,
+                child: Text("Back"),
+              ),
       ]      
       else ...[
   
@@ -996,10 +1015,7 @@ Widget build(BuildContext context) {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            
-
-            // Next Button (navigates to the REBA report on the last segment)
-         
+          
             ElevatedButton(
               onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
               child: Text('Add from Gallery'),

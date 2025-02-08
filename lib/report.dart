@@ -74,10 +74,23 @@ int finalScore = getRebaScoreC(rebaScoreA, rebaScoreB);
 
 
 class RebaReportScreen extends StatelessWidget {
-  final Map<String, int> segmentScores;
-  final Map<String, File?> capturedImages;
+  final Map<String, int> bodyPartScores;
+  final Map<String, File?> capturedImages; // Images linked to segments
 
-  RebaReportScreen({required this.segmentScores, required this.capturedImages});
+  RebaReportScreen({required this.bodyPartScores, required this.capturedImages});
+
+  final Map<String, String> bodyPartToSegment = {
+  "neckScore": "Trunk & Neck",
+  "trunkScore": "Trunk & Neck",
+  "legScore": "Legs & Posture",
+  "forceLoad": "Force Load Score",
+  "upperArmScore": "Arm",
+  "lowerArmScore": "Arm",
+  "armSupported": "Arm Supported",
+  "wristScore": "Wrist",
+  "couplingScore": "Coupling Score",
+  "activityScore": "Activity Score",
+};
 
   @override
   Widget build(BuildContext context) {
@@ -91,27 +104,33 @@ class RebaReportScreen extends StatelessWidget {
             children: [
               Text("REBA Assessment Summary", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
 
-              // Display all images with their respective segment and scores
-              ...capturedImages.entries.map((entry) {
-                String segment = entry.key;
-                File? imageFile = entry.value;
-                int? score = segmentScores[segment];
+              ...bodyPartScores.entries.map((entry) {
+                String bodyPart = entry.key;
+                int score = entry.value;
+
+                // Find corresponding segment image
+                String? relatedSegment = bodyPartToSegment[bodyPart];
+                File? imageFile = relatedSegment != null ? capturedImages[relatedSegment] : null;
+
+                // Debugging prints
+                print("Body Part: $bodyPart | Segment: $relatedSegment | Image Found: ${imageFile != null}");
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: 15),
-                    Text("$segment:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    if (imageFile != null)
-                      Image.file(imageFile, height: 150, fit: BoxFit.cover),
-                    Text("Score: ${score ?? 'N/A'}"),
+                    Text("$bodyPart:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    if (imageFile != null && imageFile.existsSync()) // Ensure file exists
+                      Image.file(imageFile, height: 150, fit: BoxFit.cover)
+                    else
+                      Text("Image not found", style: TextStyle(color: Colors.red)),
+                    Text("Score: $score"),
                   ],
                 );
               }).toList(),
 
               SizedBox(height: 20),
 
-              // Submit Assessment Button
               Center(
                 child: ElevatedButton(
                   onPressed: () {
@@ -126,6 +145,9 @@ class RebaReportScreen extends StatelessWidget {
       ),
     );
   }
+
+
+
 
   void _submitAssessment() {
     // Here, you can handle Firebase submission
