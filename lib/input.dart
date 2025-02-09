@@ -6,6 +6,8 @@ import 'classifier.dart';
 import 'handclassifier.dart';
 import 'dart:math';
 import 'report.dart';
+late TextEditingController _loadController;
+
 
 Map<String, int> segmentScores = {};
 
@@ -287,19 +289,16 @@ class PostureCalculator {
 
     return (status, shoulderdiff);
   }
-
   static double calculateNeckAngle(Vector2D nose, Vector2D midShoulder, Vector2D midHip) {
 
     return calculateAngle(nose, midShoulder, midHip);
   }
-
   static double calculateNeckTwisted(Vector2D nose, Vector2D leftEye, Vector2D rightEye){
     double angle =  (90 - calculateAngle(nose, leftEye, rightEye)).abs();
 
     return angle;
 
   }
-
   static (double,double) calculateNeckBending(Vector2D leftEar, Vector2D midShoulder, Vector2D leftShoulder,
   Vector2D rightEar, Vector2D rightShoulder){
     double neckbendingleft = (65- calculateAngle(leftEar, midShoulder, leftEar)).abs();
@@ -319,13 +318,11 @@ class PostureCalculator {
   double leftangle = calculateAngle(lefthip, midhip, midshoulder);
   return (rightangle,leftangle);
   }
-
   static double calculateLegs(Vector2D leftHip, Vector2D leftKnee, Vector2D leftAnkle, Vector2D rightHip, Vector2D rightKnee, Vector2D rightAnkle){
     double leftlegs = calculateAngle(leftHip, leftKnee, leftAnkle);
     double rightlegs = calculateAngle(rightHip, rightKnee, rightAnkle);
     return (max(leftlegs, rightlegs));
   }
-
   static double calculateWristAngle(Vector2D chosenWrist, Vector2D chosenElbow, Vector2D chosen){
     double angle = calculateAngle(chosenElbow, chosenWrist, chosen);
     return angle;
@@ -350,11 +347,13 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Map<String, List<Handkeypoint>> _handKeypoints = {};
 
   List<String> _bodySegments = [
-    "Trunk & Neck",
+    "Neck",
+    "Trunk",
     "Legs & Posture",
     "Force Load Score",
-    "Arm",
+    "Upper Arm",
     "Arm Supported",
+    "Lower Arm",
     "Wrist",
     "Coupling Score",
     "Activity Score",
@@ -368,6 +367,9 @@ int _currentStep = 0;
   void initState() {
     super.initState();
     _initializeClassifier();
+    _loadController = TextEditingController(
+    text: segmentScores["forceLoad"] != null ? segmentScores["forceLoad"].toString() : "",
+  );
   }
 
   Future<void> _initializeClassifier() async {
@@ -391,7 +393,6 @@ int _currentStep = 0;
 
     if (pickedFile != null && _isModelReady) {
       final image = File(pickedFile.path);
-      // String currentSegment = [_bodySegments[_currentStep]];
 
       setState(() {
         _capturedImages[_bodySegments[_currentStep]] = image;
@@ -457,7 +458,7 @@ int _currentStep = 0;
   // Calculate angles
   // A. Neck, Trunk, and Leg Analysis
   // 1. Locate Neck Position (+1 jika 10-20, +2 jika 20 - infinite, +2 jika negatif infinite - 0)
-  if (segment.toLowerCase() == "trunk & neck"){
+  if (segment.toLowerCase() == "neck"){
   int neckScore = 0;
 
   double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
@@ -488,10 +489,10 @@ int _currentStep = 0;
     // Calculate Total Neck Score
   segmentScores["neckScore"] = neckScore;
   print('Total Neck Score: $neckScore');
-
+  }
 
   // 2. Locate Trunk Position (+1 jika 0, +2 jika -infinite - 0, +2 jika 0 - 20, +3 jika 20 - 60, +4 jika 60 - infinite)
-  if (segment.toLowerCase() == "trunk & neck"){
+  if (segment.toLowerCase() == "trunk"){
   int trunkScore = 0;
 
   double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
@@ -527,8 +528,6 @@ int _currentStep = 0;
   // Calculate Total Trunk Score
   segmentScores["trunkScore"] = trunkScore;
   print('Total Trunk Score: $trunkScore');
-  
-  }
   }
   
   // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
@@ -567,9 +566,9 @@ int _currentStep = 0;
 
   // B. Arm and Wrist Analysis
   // 7. Locate Upper Arm Position (+1 jika -20 -20, +2 jika -infinite - -20, +2 jika 20-45, +3 jika 45-90, +4 jika 90 - infinite)
-  if (segment.toLowerCase() == "arm"){
+  if (segment.toLowerCase() == "upper arm"){
   int upperArmScore = 0;
-  int lowerArmScore = 0;
+  
 
   var (leftUpperArmAngle, rightupperArmAngle) = PostureCalculator.calculateUpperArmAngle(
     leftElbow, leftShoulder, leftHip,
@@ -618,8 +617,10 @@ int _currentStep = 0;
   
 
   // Calculate Total Upper Arm Score
-
+  }
   // 8. Locate Lower Arm Position (+1 jika 60-100, +2 jika -infinite - 60 + 2 jika 100 - infinite)
+  if (segment.toLowerCase() == "lower arm") {
+  int lowerArmScore = 0;
   var (leftLowerArmAngle, rightLowerArmAngle) = PostureCalculator.calculateLowerArmAngle(
     leftElbow, leftWrist, leftShoulder,
     rightElbow, rightWrist, rightShoulder,
@@ -709,7 +710,7 @@ if (segment.toLowerCase() == "wrist"){
   }
 }
 
-void _previousSegment() {
+  void _previousSegment() {
   if (_currentStep > 0) {
     setState(() {
       _currentStep--;
@@ -722,6 +723,7 @@ void _previousSegment() {
       _showKeypoints = !_showKeypoints;
     });
   }
+
 
   @override
 Widget build(BuildContext context) {
@@ -742,6 +744,7 @@ Widget build(BuildContext context) {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         TextField(
+          controller: _loadController,
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             labelText: "Load in kg",
@@ -785,7 +788,8 @@ Widget build(BuildContext context) {
                 onPressed: _previousSegment,
                 child: Text("Back"),
               ),
-      ]else if (currentSegment.toLowerCase() == "arm supported") ...[
+      ]
+      else if (currentSegment.toLowerCase() == "arm supported") ...[
         Text("Is the arm supported or person leaning?"),
         Row(
           children: [
@@ -849,7 +853,8 @@ Widget build(BuildContext context) {
                 onPressed: _previousSegment,
                 child: Text("Back"),
               ),
-      ]else if (currentSegment.toLowerCase() == "activity score") ...[
+      ]
+      else if (currentSegment.toLowerCase() == "activity score") ...[
   Text("Select Activity Score:"),
 
   // 1st Condition

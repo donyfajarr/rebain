@@ -80,12 +80,12 @@ class RebaReportScreen extends StatelessWidget {
   RebaReportScreen({required this.bodyPartScores, required this.capturedImages});
 
   final Map<String, String> bodyPartToSegment = {
-  "neckScore": "Trunk & Neck",
-  "trunkScore": "Trunk & Neck",
+  "neckScore": "Neck",
+  "trunkScore": "Trunk",
   "legScore": "Legs & Posture",
   "forceLoad": "Force Load Score",
-  "upperArmScore": "Arm",
-  "lowerArmScore": "Arm",
+  "upperArmScore": "Upper Arm",
+  "lowerArmScore": "Lower Arm",
   "armSupported": "Arm Supported",
   "wristScore": "Wrist",
   "couplingScore": "Coupling Score",
