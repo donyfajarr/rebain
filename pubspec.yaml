@@ -21,6 +21,7 @@ dependencies:
   image: ^3.0.2
   image_picker : ^1.0.5
   logger: ^2.1.0
+  intl: ^0.18.0
 
   tflite_flutter_helper:
     git:

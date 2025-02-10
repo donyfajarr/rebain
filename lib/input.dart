@@ -458,77 +458,151 @@ int _currentStep = 0;
   // Calculate angles
   // A. Neck, Trunk, and Leg Analysis
   // 1. Locate Neck Position (+1 jika 10-20, +2 jika 20 - infinite, +2 jika negatif infinite - 0)
-  if (segment.toLowerCase() == "neck"){
+  if (segment.toLowerCase() == "neck") {
   int neckScore = 0;
 
+  // 1️⃣ Calculate Neck Flexion/Extension Score
   double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
   print('Neck Angle: $neckAngle°');
 
-  if (neckAngle >=10 && neckAngle < 20){
-    neckScore +=1;
-  } else if (neckAngle > 20){
-    neckScore +=2;
-  } else if (neckAngle <=0){
-    neckScore +=2;
+  if (neckAngle >= 10 && neckAngle < 20) {
+    neckScore += 1;
+  } else if (neckAngle > 20 || neckAngle <= 0) {
+    neckScore += 2;
   }
-  // 1.1 If Neck is twisted (+1 jika 5-infinite)
+
+  // 2️⃣ Check for Twisting and Bending (Only Add +1 Once)
   double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftEye, rightEye);
-  print('Neck Twisted : $neckTwisted');
-  if (neckTwisted >=5){
-    neckScore +=1;
+  var (neckBendingLeft, neckBendingRight) = PostureCalculator.calculateNeckBending(
+    leftEar, midShoulder, leftShoulder, rightEar, rightShoulder
+  );
+
+  bool isNeckTwisted = neckTwisted >= 5;
+  bool isNeckBending = neckBendingLeft >= 5 || neckBendingRight >= 5;
+
+  // If either twisting or bending exists, add only +1
+  if (isNeckTwisted || isNeckBending) {
+    neckScore += 1;
   }
 
-  // 1.2 If Neck is side bending (+1 jika 5-infinite)
-  var (neckbendingleft, neckbendingright) = PostureCalculator.calculateNeckBending(leftEar, midShoulder, leftShoulder, rightEar, rightShoulder);
-  print('Neck Bending Left: $neckbendingleft');
-  print('Neck Bending Right: $neckbendingright');
-
-  if (neckbendingleft>=5 || neckbendingright>=5){
-    neckScore +=1;
-  }
-    // Calculate Total Neck Score
+  // 3️⃣ Store Final Neck Score
   segmentScores["neckScore"] = neckScore;
   print('Total Neck Score: $neckScore');
-  }
+}
+  // if (segment.toLowerCase() == "neck"){
+  // int neckScore = 0;
+
+  // double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
+  // print('Neck Angle: $neckAngle°');
+
+  // if (neckAngle >=10 && neckAngle < 20){
+  //   neckScore +=1;
+  // } else if (neckAngle > 20){
+  //   neckScore +=2;
+  // } else if (neckAngle <=0){
+  //   neckScore +=2;
+  // }
+  // // 1.1 If Neck is twisted (+1 jika 5-infinite)
+  // double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftEye, rightEye);
+  // print('Neck Twisted : $neckTwisted');
+  // if (neckTwisted >=5){
+  //   neckScore +=1;
+  // }
+
+  // // 1.2 If Neck is side bending (+1 jika 5-infinite)
+  // var (neckbendingleft, neckbendingright) = PostureCalculator.calculateNeckBending(leftEar, midShoulder, leftShoulder, rightEar, rightShoulder);
+  // print('Neck Bending Left: $neckbendingleft');
+  // print('Neck Bending Right: $neckbendingright');
+
+  // if (neckbendingleft>=5 || neckbendingright>=5){
+  //   neckScore +=1;
+  // }
+  //   // Calculate Total Neck Score
+  // segmentScores["neckScore"] = neckScore;
+  // print('Total Neck Score: $neckScore');
+  // }
 
   // 2. Locate Trunk Position (+1 jika 0, +2 jika -infinite - 0, +2 jika 0 - 20, +3 jika 20 - 60, +4 jika 60 - infinite)
-  if (segment.toLowerCase() == "trunk"){
+  if (segment.toLowerCase() == "trunk") {
   int trunkScore = 0;
 
+  // 1️⃣ Calculate Trunk Flexion/Extension Score
   double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
   print('Trunk Flexion Angle: $trunkFlexion');
-  if (trunkFlexion == 0){
-    trunkScore +=1;
-  } else if (trunkFlexion <0){
-    trunkScore +=2;
-  } else if (trunkFlexion >0 && trunkFlexion <=20){
-    trunkScore +=2;
-  } else if (trunkFlexion >20 && trunkFlexion<=60){
-    trunkScore +=3;
-  } else if (trunkFlexion >60){
-    trunkScore +=4;
+
+  if (trunkFlexion == 0) {
+    trunkScore += 1;
+  } else if (trunkFlexion < 0) {
+    trunkScore += 2;
+  } else if (trunkFlexion > 0 && trunkFlexion <= 20) {
+    trunkScore += 2;
+  } else if (trunkFlexion > 20 && trunkFlexion <= 60) {
+    trunkScore += 3;
+  } else if (trunkFlexion > 60) {
+    trunkScore += 4;
   }
 
-  // 2.1 If trunk is twisted (+1 jika 100 - infinite)
-  double trunkTwisting = PostureCalculator.calculateTrunkTwisting(rightShoulder, midHip, rightHip, leftShoulder, leftHip);
+  // 2️⃣ Check for Twisting and Bending (Only Add +1 Once)
+  double trunkTwisting = PostureCalculator.calculateTrunkTwisting(
+    rightShoulder, midHip, rightHip, leftShoulder, leftHip
+  );
+  var (leftBending, rightBending) = PostureCalculator.calculateTrunkBending(
+    rightHip, midHip, midShoulder, leftHip
+  );
+
   print('Trunk Twisting Angle: $trunkTwisting');
+  print('Trunk Bending Left Angle: $leftBending');
+  print('Trunk Bending Right Angle: $rightBending');
 
-  if (trunkTwisting >=100){
-    trunkScore +=1;
+  bool isTrunkTwisted = trunkTwisting >= 100;
+  bool isTrunkBending = leftBending <= 85 || leftBending >= 95 || rightBending <= 85 || rightBending >= 95;
+
+  // If either twisting or bending exists, add only +1
+  if (isTrunkTwisted || isTrunkBending) {
+    trunkScore += 1;
   }
 
-  // 2.2 If trunk is bending (+1 jika -infinite - 85, +1 jika 95 - infinite)
-  var (leftbending, rightbending) = PostureCalculator.calculateTrunkBending(rightHip, midHip, midShoulder, leftHip);
-  print('Trunk Bending Left Angle: $leftbending');
-  print('Trunk Bending Right Angle: $rightbending');
-  if (leftbending <=85 || leftbending >=95 || rightbending <=85 || rightbending >=95){
-    trunkScore +=1;
-  }
-
-  // Calculate Total Trunk Score
+  // 3️⃣ Store Final Trunk Score
   segmentScores["trunkScore"] = trunkScore;
   print('Total Trunk Score: $trunkScore');
-  }
+}
+  // if (segment.toLowerCase() == "trunk"){
+  // int trunkScore = 0;
+
+  // double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
+  // print('Trunk Flexion Angle: $trunkFlexion');
+  // if (trunkFlexion == 0){
+  //   trunkScore +=1;
+  // } else if (trunkFlexion <0){
+  //   trunkScore +=2;
+  // } else if (trunkFlexion >0 && trunkFlexion <=20){
+  //   trunkScore +=2;
+  // } else if (trunkFlexion >20 && trunkFlexion<=60){
+  //   trunkScore +=3;
+  // } else if (trunkFlexion >60){
+  //   trunkScore +=4;
+  // }
+
+  // // 2.1 If trunk is twisted (+1 jika 100 - infinite)
+  // double trunkTwisting = PostureCalculator.calculateTrunkTwisting(rightShoulder, midHip, rightHip, leftShoulder, leftHip);
+  // print('Trunk Twisting Angle: $trunkTwisting');
+
+  // if (trunkTwisting >=100){
+  //   trunkScore +=1;
+  // }
+
+  // // 2.2 If trunk is bending (+1 jika -infinite - 85, +1 jika 95 - infinite)
+  // var (leftbending, rightbending) = PostureCalculator.calculateTrunkBending(rightHip, midHip, midShoulder, leftHip);
+  // print('Trunk Bending Left Angle: $leftbending');
+  // print('Trunk Bending Right Angle: $rightbending');
+  // if (leftbending <=85 || leftbending >=95 || rightbending <=85 || rightbending >=95){
+  //   trunkScore +=1;
+  // }
+
+  // // Calculate Total Trunk Score
+  // segmentScores["trunkScore"] = trunkScore;
+  // print('Total Trunk Score: $trunkScore');
+  // }
   
   // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
 
@@ -682,7 +756,7 @@ if (segment.toLowerCase() == "wrist"){
   int wristScore = 0;
   if (wristAngle >=-15 && wristAngle <=15){
     wristScore +=1;
-  } else if (wristAngle <-15 && wristAngle >15){
+  } else if (wristAngle <-15 || wristAngle >15){
     wristScore +=2;
   }
   segmentScores['wristScore'] = wristScore;
@@ -772,6 +846,8 @@ Widget build(BuildContext context) {
                 segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
                 segmentScores["shockAdded"] = 1;
               } else {
+                segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) - 1;
+                if (segmentScores["forceLoad"]! < 0) segmentScores["forceLoad"] = 0; // Prevent negative values
                 segmentScores["shockAdded"] = 0;
               }
               print(segmentScores);
@@ -789,17 +865,21 @@ Widget build(BuildContext context) {
                 child: Text("Back"),
               ),
       ]
-      else if (currentSegment.toLowerCase() == "arm supported") ...[
+     else if (currentSegment.toLowerCase() == "arm supported") ...[
         Text("Is the arm supported or person leaning?"),
         Row(
           children: [
             Radio(
-              value: -1,
+              value: 1,
               groupValue: segmentScores["armSupport"] ?? 0,
               onChanged: (int? value) {
                 setState(() {
+                  if (segmentScores["armSupport"] == 0) {
+                    // If switching from "No" to "Yes", subtract 1
+                    segmentScores["upperArmScore"] = (segmentScores["upperArmScore"] ?? 0) - 1;
+                    if (segmentScores["upperArmScore"]! < 0) segmentScores["upperArmScore"] = 0; // Prevent negative
+                  }
                   segmentScores["armSupport"] = value ?? 0;
-                  print(segmentScores);
                 });
               },
             ),
@@ -809,8 +889,11 @@ Widget build(BuildContext context) {
               groupValue: segmentScores["armSupport"] ?? 0,
               onChanged: (int? value) {
                 setState(() {
+                  if (segmentScores["armSupport"] == 1) {
+                    // If switching from "Yes" to "No", undo the -1 (add back 1)
+                    segmentScores["upperArmScore"] = (segmentScores["upperArmScore"] ?? 0) + 1;
+                  }
                   segmentScores["armSupport"] = value ?? 0;
-                  print(segmentScores);
                 });
               },
             ),
@@ -823,10 +906,10 @@ Widget build(BuildContext context) {
           child: Text('Continue to Next Segment'),
         ),
         if (_currentStep > 0)
-              ElevatedButton(
-                onPressed: _previousSegment,
-                child: Text("Back"),
-              ),
+          ElevatedButton(
+            onPressed: _previousSegment,
+            child: Text("Back"),
+          ),
       ] else if (currentSegment.toLowerCase() == "coupling score") ...[
         Text("Select Coupling Quality:"),
         DropdownButton<int>(
