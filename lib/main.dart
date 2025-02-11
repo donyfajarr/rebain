@@ -6,10 +6,25 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'input.dart'; // Import your input.dart file
 import 'create.dart'; // Ensure form.dart contains SimpleForm
 import 'package:firebase_core/firebase_core.dart';
+import 'list.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+// import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await dotenv.load(fileName: ".env");
+  String supabaseUrl = dotenv.env['SUPABASE_URL']!;
+  String supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY']!;
+
+    await Firebase.initializeApp();
+    await supabase.Supabase.initialize(
+      url: supabaseUrl,
+      anonKey: supabaseAnonKey
+    );
+  
   runApp(MyApp());
 }
 
@@ -33,6 +48,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
+
     // Navigate to SignInScreen after 3 seconds
     Future.delayed(Duration(seconds: 3), () {
       Navigator.pushReplacement(
@@ -165,17 +181,18 @@ class HomeScreen extends StatelessWidget {
               },
               child: Text('Go to Image Picker'),
             ),
-            // SizedBox(height: 20), // Space between the buttons
-            // ElevatedButton(
-            //   onPressed: () {
-            //     // Navigate to SimpleForm
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(builder: (context) => SimpleForm()),
-            //     );
-            //   },
-            //   child: Text('Go to Simple Form'),
-            // ),
+            SizedBox(height: 20), // Space between the buttons
+
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to SimpleForm
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AssessmentListPage()),
+                );
+              },
+              child: Text('Go to Details'),
+            ),
           //   SizedBox(height: 20),
           //   ElevatedButton(
           //       onPressed: () {

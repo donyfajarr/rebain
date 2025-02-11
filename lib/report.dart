@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:merula/main.dart';
 import 'input.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:image/image.dart' as image_lib;
 import 'package:intl/intl.dart';
+import 'create.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 
 // Table A: Neck Scores
@@ -128,19 +132,72 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
 
   }
 
-  void _submitAssessment() {
+  void _submitAssessment() async {
+    try {
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? "anonymous";
+    print('userId: $userId');
+    // ✅ Auto-generate assessmentId (Firestore document ID)
+    String assessmentId = FirebaseFirestore.instance.collection('reba_assessments').doc().id;
+
     String description = _descriptionController.text.trim();
     String title = _titleController.text.trim();
 
+    List<Map<String, dynamic>> images = [];
+
+    
+
+    for (var entry in widget.capturedImages.entries) {
+      String segmentKey = entry.key;
+      File? imageFile = entry.value;
+
+      if (imageFile != null) {
+        String? imageUrl = await uploadImageToSupabase(imageFile, userId, assessmentId, segmentKey);
+        if (imageUrl != null) {
+          images.add({"segment": segmentKey, "url": imageUrl});
+        }
+      }
+    }
+
+
+
     Map<String, dynamic> assessmentData = {
+      'userId' : userId,
+      'assessmentId': assessmentId,  // Store the ID for future reference
+      // 'userId': userId,
       'timestamp': timestamp,
+      'title': title.isNotEmpty ? title : "Untitled Assessment",
       'description': description.isNotEmpty ? description : "No description provided",
       'overallScore': overallScore,
       'bodyScores': widget.bodyPartScores,
+      'images': images,  // Store image URLs here
     };
 
-    print("Submitting REBA Assessment: $assessmentData");
-    // You can store this in a database or send it to an API later
+ 
+
+    print(assessmentData);
+
+      FirebaseAuth.instance.authStateChanges().listen((User? user) {
+  if (user == null) {
+    print("User is signed out");
+  } else {
+    print("User is signed in: ${user.uid}");
+  }
+});
+
+          await FirebaseFirestore.instance.collection('reba_assessments')
+  .doc(assessmentId)
+  .set(assessmentData)
+  .then((_) => print("✅ Successfully submitted REBA assessment"))
+  .catchError((error) => print("❌ Firestore Write Error: $error"));
+
+   print("✅ Submitted REBA Assessment: $assessmentData");
+   Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeScreen()), 
+      );
+  } catch (e) {
+    print("❌ Error submitting assessment: $e");
+  }
   }
 
   @override
