@@ -83,9 +83,12 @@ int getRebaScoreC(int scoreA, int scoreB) {
 
 class RebaReportScreen extends StatefulWidget {
   final Map<String, int> bodyPartScores;
-  final Map<String, File?> capturedImages; // Images linked to segments
+  final Map<String, File?> capturedImages;
+  Map<String, List<Keypoint>> keypoints = {};
+  Map<String, List<Handkeypoint>> handkeypoints = {};
+   // Images linked to segments
 
-  RebaReportScreen({required this.bodyPartScores, required this.capturedImages});
+  RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints, required this.handkeypoints});
 
   @override
   _RebaReportScreenState createState() => _RebaReportScreenState();
@@ -132,73 +135,100 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
 
   }
 
-  void _submitAssessment() async {
-    try {
+ void _submitAssessment() async {
+  try {
     String userId = FirebaseAuth.instance.currentUser?.uid ?? "anonymous";
     print('userId: $userId');
+
     // ✅ Auto-generate assessmentId (Firestore document ID)
-    String assessmentId = FirebaseFirestore.instance.collection('reba_assessments').doc().id;
+    String assessmentId =
+        FirebaseFirestore.instance.collection('reba_assessments').doc().id;
 
     String description = _descriptionController.text.trim();
     String title = _titleController.text.trim();
 
     List<Map<String, dynamic>> images = [];
 
-    
+    // ✅ Ensure timestamp & overallScore are initialized
+    timestamp = DateTime.now().toIso8601String();
+    overallScore = overallScore ?? 0;
 
     for (var entry in widget.capturedImages.entries) {
       String segmentKey = entry.key;
       File? imageFile = entry.value;
 
       if (imageFile != null) {
-        String? imageUrl = await uploadImageToSupabase(imageFile, userId, assessmentId, segmentKey);
-        if (imageUrl != null) {
-          images.add({"segment": segmentKey, "url": imageUrl});
+        try {
+          String? imageUrl =
+              await uploadImageToSupabase(imageFile, userId, assessmentId, segmentKey);
+          if (imageUrl != null) {
+            // ✅ Get keypoints for this image
+            List<Map<String, double>> keypoints = widget.keypoints[segmentKey]
+                    ?.map((kp) => {"x": kp.x, "y": kp.y})
+                    .toList() ??
+                [];
+
+                Map<String, dynamic> imageData = {
+                  "segment": segmentKey,
+                  "url": imageUrl,
+                  "keypoints": keypoints,
+                };
+
+                if (segmentKey == "Wrist") {
+              List<Map<String, double>> handkeypoints = widget.handkeypoints[segmentKey]
+                      ?.map((hkp) => {"x": hkp.x, "y": hkp.y})
+                      .toList() ??
+                  [];
+                if (handkeypoints.isNotEmpty) {
+                                imageData["handkeypoints"] = handkeypoints;
+                              }
+                            }
+
+                            images.add(imageData);
+                          }
+                          
+        } catch (e) {
+          print("❌ Error uploading image for segment $segmentKey: $e");
         }
       }
     }
 
-
-
     Map<String, dynamic> assessmentData = {
-      'userId' : userId,
-      'assessmentId': assessmentId,  // Store the ID for future reference
-      // 'userId': userId,
+      'userId': userId,
+      'assessmentId': assessmentId,
       'timestamp': timestamp,
       'title': title.isNotEmpty ? title : "Untitled Assessment",
       'description': description.isNotEmpty ? description : "No description provided",
       'overallScore': overallScore,
       'bodyScores': widget.bodyPartScores,
-      'images': images,  // Store image URLs here
+      'images': images,
     };
 
- 
+    print("🚀 Submitting Assessment: $assessmentData");
 
-    print(assessmentData);
+    await FirebaseFirestore.instance
+        .collection('reba_assessments')
+        .doc(assessmentId)
+        .set(assessmentData)
+        .then((_) => print("✅ Successfully submitted REBA assessment"))
+        .catchError((error) => print("❌ Firestore Write Error: $error"));
 
-      FirebaseAuth.instance.authStateChanges().listen((User? user) {
-  if (user == null) {
-    print("User is signed out");
-  } else {
-    print("User is signed in: ${user.uid}");
-  }
-});
 
-          await FirebaseFirestore.instance.collection('reba_assessments')
-  .doc(assessmentId)
-  .set(assessmentData)
-  .then((_) => print("✅ Successfully submitted REBA assessment"))
-  .catchError((error) => print("❌ Firestore Write Error: $error"));
+    _descriptionController.clear();
+    _titleController.clear();
+    print("✅ Submitted REBA Assessment: $assessmentData");
+    
 
-   print("✅ Submitted REBA Assessment: $assessmentData");
-   Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen()), 
-      );
-  } catch (e) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomeScreen()),
+    );
+  } catch (e, stackTrace) {
     print("❌ Error submitting assessment: $e");
+    print(stackTrace); // Logs full error trace for debugging
   }
-  }
+}
+
 
   @override
   Widget build(BuildContext context) {

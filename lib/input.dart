@@ -59,7 +59,6 @@ class HandKeypointsPainter extends CustomPainter {
     "Pinky_TIP",
   ];
 
-
   HandKeypointsPainter(this.handkeypoints, this.paddingX, this.paddingY);
 
   @override
@@ -778,6 +777,8 @@ if (segment.toLowerCase() == "wrist"){
         builder: (context) => RebaReportScreen(
           bodyPartScores: segmentScores,
           capturedImages: _capturedImages,
+          keypoints: _keypointsMap,
+          handkeypoints: _handKeypoints,
         ),
       ),
     );
@@ -1018,6 +1019,8 @@ Widget build(BuildContext context) {
           builder: (context) => RebaReportScreen(
             bodyPartScores: segmentScores,
             capturedImages: _capturedImages,
+            keypoints: _keypointsMap,
+            handkeypoints: _handKeypoints,
           ),
               ),
            );

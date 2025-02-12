@@ -15,9 +15,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-  String supabaseUrl = dotenv.env['SUPABASE_URL']!;
-  String supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY']!;
+  await dotenv.load(fileName: "assets/.env");
+  String supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+  String supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
 
     await Firebase.initializeApp();
     await supabase.Supabase.initialize(
