@@ -113,6 +113,184 @@ class HandKeypointsPainter extends CustomPainter {
   }
 }
 
+// class VectorPainter extends CustomPainter {
+//  final List<Keypoint> keypoints;
+//  final List<int> relevantkeypoints;
+//  final double paddingX;
+//  final double paddingY;
+// }
+
+
+class VectorPainter extends CustomPainter {
+  final List<Keypoint> keypoints;
+  final String segmentName;
+  final double paddingX;
+  final double paddingY;
+  
+
+    VectorPainter(this.keypoints, this.segmentName, this.paddingX, this.paddingY);
+    @override
+  void paint(Canvas canvas, Size size) {
+    final paintKeypoints = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.fill;
+    final paintLines = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = 2.0;
+
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+
+    // 🔹 Get the keypoints & connections for the selected segment
+    // final List<int> relevantKeypoints = segmentKeypoints[segmentName] ?? [];
+    // final List<List<int>> relevantConnections = segmentConnections[segmentName] ?? [];
+    List<Vector2D> vectors = keypoints.map((kp) => Vector2D(kp.x, kp.y)).toList();
+    if (vectors.length <17) return;
+
+    List<List<int>> connections = [];
+    List<int> relevantKeypoints = [];
+    Offset? midShoulder, midHip, midKnee;
+
+     switch (segmentName.toLowerCase()) {
+      case "neck":
+        relevantKeypoints = [0, 5, 6, 11, 12];
+        midShoulder = _calculateMidpoint(keypoints, 5, 6, size);
+        midHip = _calculateMidpoint(keypoints, 11, 12, size);
+        connections = [[0, -1], [-1, -2]];
+        break;
+
+      case "trunk":
+        relevantKeypoints = [11, 12, 13, 14, 5, 6];
+        midShoulder = _calculateMidpoint(keypoints, 5, 6, size);
+        midHip = _calculateMidpoint(keypoints, 11, 12, size);
+        midKnee = _calculateMidpoint(keypoints, 13, 14, size);
+        connections = [[-1, -2], [-2, -3]];
+        break;
+
+      case "legs & posture":
+        relevantKeypoints = [11, 13, 15, 12, 14, 16];
+        connections = [
+          [11, 13], [13, 15], // Left leg
+          [12, 14], [14, 16] // Right leg
+        ];
+        break;
+
+      case "upper arm":
+        relevantKeypoints = [5, 7, 11, 6, 8, 12];
+        connections = [
+          [5, 7], [7, 11], // Left arm
+          [6, 8], [8, 12] // Right arm
+        ];
+        break;
+
+      case "lower arm":
+        relevantKeypoints = [7, 9, 5, 8, 10, 6];
+        connections = [
+          [7, 9], [9, 5], // Left lower arm
+          [8, 10], [10, 6] // Right lower arm
+        ];
+        break;
+
+      case "wrist":
+        if (keypoints.isEmpty) return;
+
+        // The last keypoint in `keypoints` is the chosen hand keypoint
+        int chosenHandIndex = keypoints.length - 1;
+
+        // Define wrist and elbow indices based on MoveNet keypoints
+        int leftElbowIndex = 7;
+        int leftWristIndex = 9;
+        int rightElbowIndex = 8;
+        int rightWristIndex = 10;
+
+        // Compute distances to determine which wrist is closer to the chosen hand keypoint
+        double distanceLeftWrist = sqrt(pow(keypoints[leftWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
+                                        pow(keypoints[leftWristIndex].y - keypoints[chosenHandIndex].y, 2));
+        double distanceRightWrist = sqrt(pow(keypoints[rightWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
+                                        pow(keypoints[rightWristIndex].y - keypoints[chosenHandIndex].y, 2));
+
+        int chosenWristIndex, chosenElbowIndex;
+        
+        if (distanceLeftWrist < distanceRightWrist) {
+          chosenWristIndex = leftWristIndex;
+          chosenElbowIndex = leftElbowIndex;
+        } else {
+          chosenWristIndex = rightWristIndex;
+          chosenElbowIndex = rightElbowIndex;
+        }
+
+        // Define relevant keypoints: elbow → wrist → hand keypoint
+        relevantKeypoints = [chosenElbowIndex, chosenWristIndex, chosenHandIndex];
+
+        // Define connections for drawing
+        connections = [
+          [chosenElbowIndex, chosenWristIndex],  // Elbow → Wrist
+          [chosenWristIndex, chosenHandIndex]    // Wrist → Chosen Hand Keypoint
+        ];
+
+        // print("Wrist Relevant Keypoints: $relevantKeypoints");
+        break;
+
+    }
+   
+    // Draw lines (vectors) between connected keypoints
+    // Draw individual keypoints
+    for (var index in relevantKeypoints) {
+      final keypoint = keypoints[index];
+      if (keypoint.confidence > 0.1) {
+        final dx = keypoint.x * size.width;
+        final dy = keypoint.y * size.height;
+        canvas.drawCircle(Offset(dx, dy), 4.0, paintKeypoints);
+      }
+    }
+
+    // Draw midpoints
+    if (midShoulder != null) canvas.drawCircle(midShoulder!, 4.0, paintKeypoints);
+    if (midHip != null) canvas.drawCircle(midHip!, 4.0, paintKeypoints);
+    if (midKnee != null) canvas.drawCircle(midKnee!, 4.0, paintKeypoints);
+
+    // Draw connections
+    for (var pair in connections) {
+      Offset? p1, p2;
+
+      if (pair[0] == -1) p1 = midShoulder;
+      else if (pair[0] == -2) p1 = midHip;
+      else if (pair[0] == -3) p1 = midKnee;
+      else p1 = keypoints[pair[0]].confidence > 0.1
+          ? Offset(keypoints[pair[0]].x * size.width, keypoints[pair[0]].y * size.height)
+          : null;
+
+      if (pair[1] == -1) p2 = midShoulder;
+      else if (pair[1] == -2) p2 = midHip;
+      else if (pair[1] == -3) p2 = midKnee;
+      else p2 = keypoints[pair[1]].confidence > 0.1
+          ? Offset(keypoints[pair[1]].x * size.width, keypoints[pair[1]].y * size.height)
+          : null;
+
+      if (p1 != null && p2 != null) {
+        canvas.drawLine(p1, p2, paintLines);
+      }
+    }
+  }
+
+  /// Calculates the midpoint between two keypoints
+  Offset? _calculateMidpoint(List<Keypoint> keypoints, int kp1, int kp2, Size size) {
+    if (keypoints[kp1].confidence < 0.1 || keypoints[kp2].confidence < 0.1) return null;
+    double x = (keypoints[kp1].x + keypoints[kp2].x) / 2;
+    double y = (keypoints[kp1].y + keypoints[kp2].y) / 2;
+    return Offset(x * size.width, y * size.height);
+  }
+
+  /// Handles drawing the wrist with hand keypoints
+
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
+  }
+}
+
 class KeypointsPainter extends CustomPainter {
   final List<Keypoint> keypoints;
   final double paddingX;
@@ -250,7 +428,6 @@ class PostureCalculator {
     double angleRadians = acos(dotProduct / (magnitudeBA * magnitudeBC));
     return angleRadians * (180 / pi);
   }
-  
   static (double, double) calculateLowerArmAngle(
       Vector2D leftElbow, Vector2D leftWrist, Vector2D leftShoulder,
       Vector2D rightElbow, Vector2D rightWrist, Vector2D rightShoulder) {
@@ -259,7 +436,6 @@ class PostureCalculator {
 
     return (leftAngle, rightAngle);
   }
-
   static (double, double) calculateUpperArmAngle(
       Vector2D leftElbow, Vector2D leftShoulder, Vector2D leftHip,
       Vector2D rightElbow, Vector2D rightShoulder, Vector2D rightHip) {
@@ -268,7 +444,6 @@ class PostureCalculator {
 
     return (leftAngle, rightAngle);
   }
-  
   static (String, double) calculateUpperArmAbducted(
     Vector2D leftShoulder, Vector2D leftElbow, Vector2D midShoulder, Vector2D rightShoulder, Vector2D rightElbow){
       double leftAngle = calculateAngle(leftElbow, leftShoulder, midShoulder);
@@ -279,8 +454,6 @@ class PostureCalculator {
       String status = angle > 110.0 ? "Upper Arm is Abducted" : "Upper Arm is not Abducted";
       return (status, angle);
     }
-
-
   static (String, double) calculateShoulderRaised(Vector2D leftShoulder, Vector2D rightShoulder) {
     double threshold = 30.0;
     double shoulderdiff = (leftShoulder.y - rightShoulder.y).abs();
@@ -717,39 +890,42 @@ int _currentStep = 0;
 
   // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
 
-  if (segment.toLowerCase() == 'wrist'){
+    if (segment.toLowerCase() == 'wrist'){
 
-  double maxX = handkeypoints[0].x;
-  int maxIndex = 0;
+    double maxX = handkeypoints[0].x;
+    int maxIndex = 0;
 
-  for (int i = 0; i < handkeypoints.length; i++) {
-    if (handkeypoints[i].x > maxX) {
-      maxX = handkeypoints[i].x;
-      maxIndex = i;
+    for (int i = 0; i < handkeypoints.length; i++) {
+      if (handkeypoints[i].x > maxX) {
+        maxX = handkeypoints[i].x;
+        maxIndex = i;
+      }
     }
-  }
 
-  Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
-  Vector2D chosenWrist;
-  Vector2D chosenElbow;
-  print('Chosen: $chosen');
+    Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
+    Vector2D chosenWrist;
+    Vector2D chosenElbow;
+    print('Chosen: $chosen');
 
-  
+    
 
-  double distanceLeftWrist = leftWrist.distanceTo(chosen);
-  double distanceRightWrist = rightWrist.distanceTo(chosen);
+    double distanceLeftWrist = leftWrist.distanceTo(chosen);
+    double distanceRightWrist = rightWrist.distanceTo(chosen);
 
 
-if (distanceLeftWrist < distanceRightWrist) {
-    chosenWrist = leftWrist;
-    chosenElbow = leftElbow;
-} else {
-    chosenWrist = rightWrist;
-    chosenElbow = rightElbow;}
+  if (distanceLeftWrist < distanceRightWrist) {
+      chosenWrist = leftWrist;
+      chosenElbow = leftElbow;
+  } else {
+      chosenWrist = rightWrist;
+      chosenElbow = rightElbow;}
 
-  double wristAngle = PostureCalculator.calculateWristAngle(chosenWrist, chosenElbow, chosen);
-  
-    print('Wrist Angle: $wristAngle');
+    double wristAngle = PostureCalculator.calculateWristAngle(chosenWrist, chosenElbow, chosen);
+    
+      print('Wrist Angle: $wristAngle');
+    _keypointsMap.values.last.add(
+    Keypoint(chosen.x, chosen.y, 1.0) // Hand keypoint from handKeypoints
+  );
 
 if (segment.toLowerCase() == "wrist"){
   int wristScore = 0;
@@ -1065,7 +1241,7 @@ Widget build(BuildContext context) {
                     Container(
                       width: 256,
                       height: 256,
-                      color: Colors.black, // Background padding
+                      color: Theme.of(context).scaffoldBackgroundColor, // Background padding
                       child: Center(
                         child: Image.file(
                           imageFile,
@@ -1076,29 +1252,38 @@ Widget build(BuildContext context) {
                       ),
                     ),
                     // Draw keypoints correctly on top
-                    
-                      if (_keypointsMap[currentSegment] != null)
+                    if (_keypointsMap[currentSegment] != null)
+      CustomPaint(
+        size: Size(256, 256),
+        painter: VectorPainter(
+          _keypointsMap[currentSegment]!,
+          currentSegment, // Pass the segment name
+          paddingX,
+          paddingY,
+        ),
+      ),
+                      // if (_keypointsMap[currentSegment] != null)
                       
-                        CustomPaint(
-                          size: Size(256, 256),
-                          painter: KeypointsPainter(
-                            _keypointsMap[currentSegment]!,
-                            paddingX,
-                            paddingY,
-                          ),
-                        ),
-                      if (currentSegment.toLowerCase() == "wrist" &&
-    _handKeypoints[currentSegment] != null &&
-    _handKeypoints[currentSegment]!.isNotEmpty &&
-    _showKeypoints)
-                        CustomPaint(
-                          size: Size(256, 256),
-                          painter: HandKeypointsPainter(
-                            _handKeypoints[currentSegment]!,
-                            paddingX,
-                            paddingY,
-                          ),
-                        ),
+                      //   CustomPaint(
+                      //     size: Size(256, 256),
+                      //     painter: KeypointsPainter(
+                      //       _keypointsMap[currentSegment]!,
+                      //       paddingX,
+                      //       paddingY,
+                      //     ),
+                      //   ),
+    //                   if (currentSegment.toLowerCase() == "wrist" &&
+    // _handKeypoints[currentSegment] != null &&
+    // _handKeypoints[currentSegment]!.isNotEmpty &&
+    // _showKeypoints)
+    //                     CustomPaint(
+    //                       size: Size(256, 256),
+    //                       painter: HandKeypointsPainter(
+    //                         _handKeypoints[currentSegment]!,
+    //                         paddingX,
+    //                         paddingY,
+    //                       ),
+    //                     ),
                   ],
                 );
               })
