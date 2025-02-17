@@ -34,7 +34,7 @@ dependencies:
   cloud_firestore: ^5.4.4
   firebase_core: ^3.6.0
   flutter_dotenv: ^5.2.1
-
+  url_launcher: ^6.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -66,6 +66,14 @@ flutter:
     - family: LilitaOne
       fonts:
         - asset: assets/font_logo.ttf
+    - family: Poppins
+      fonts:
+        - asset: assets/poppins_bold.ttf
+          weight: 700
+        - asset : assets/poppins_regular.ttf
+        - asset: assets/Poppins-SemiBold.ttf
+          weight: 600
+        
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
   #   - family: Trajan Pro

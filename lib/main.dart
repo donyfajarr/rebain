@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 
 // import 'splash_screen.dart';
 import 'input.dart'; // Import your input.dart file
@@ -53,8 +55,13 @@ class _SplashScreenState extends State<SplashScreen> {
     Future.delayed(Duration(seconds: 3), () {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => SignInScreen()),
-      );
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) => SignInScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            var scale = Tween(begin: 0.8, end: 1.0).animate(animation);
+            return ScaleTransition(scale: scale, child: child);
+        },
+      ),);
     });
   }
 
@@ -68,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             Image.asset('assets/logo.png', height: 200), // Your logo here
             SizedBox(height: 10),
-            Text("MERULA",
+            Text("REBAIN",
                 style: TextStyle(
                     fontFamily: 'LilitaOne',
                     fontSize: 36,
@@ -87,6 +94,8 @@ class SignInScreen extends StatefulWidget {
 
 class _SignInScreenState extends State<SignInScreen> {
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final Uri googleRegisterUrl = Uri.parse('https://accounts.google.com/signup');
+
   bool _isSigningIn = false;
 
   Future<void> _signInWithGoogle() async {
@@ -139,20 +148,166 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
+ void _launchURL() async {
+    if (await canLaunchUrl(googleRegisterUrl)) {
+      await launchUrl(googleRegisterUrl);
+    } else {
+      throw 'Could not launch $googleRegisterUrl';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text('Sign In'),
-      ),
-      body: Center(
-        child: _isSigningIn
-            ? CircularProgressIndicator()
-            : ElevatedButton(
-                onPressed: _signInWithGoogle,
-                child: Text('Sign in with Google'),
-              ),
+      body: Stack(
+        children: [
+          // Full-width Top Decoration (Extends behind the status bar)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Image.asset(
+              'assets/group.png', // Your asset
+              width: MediaQuery.of(context).size.width, // Full width
+              fit: BoxFit.cover, // Ensures full coverage
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                // Center Content
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+
+                        Text(
+                          "Hello!",
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+
+                        Text(
+                          "Please sign-in",
+                       
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14, 
+                            color: Colors.black),
+                          textAlign: TextAlign.center,
+                        ),
+
+                        Text(
+                          "into your own account.",
+                       
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14, 
+                            color: Colors.black),
+                          textAlign: TextAlign.center,
+                        ),
+
+
+
+                        SizedBox(height: 30),
+
+                        // Logo
+                        Image.asset('assets/logo.png', height: 180),
+                        SizedBox(height: 10),
+
+                        // App Name
+                        Text(
+                          "REBAIN",
+                          style: TextStyle(
+                            fontFamily: 'LilitaOne',
+                            fontSize: 36,
+                            color: Color(0xFF086444),
+                          ),
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // Welcome Text
+                        
+
+                        // Google Sign-In Button
+                        GestureDetector(
+                          onTap: () {
+                            _signInWithGoogle();
+                          },
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Color.fromRGBO(55, 149, 112, 1),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Image.asset(
+                                  'assets/google_icon.png',
+                                  height: 24,
+                                ),
+                                SizedBox(width: 10),
+                                Text(
+                                  "Sign In with Google",
+                                  style: TextStyle(
+                                    fontFamily : 'Poppins',
+                                    fontWeight : FontWeight.w600,
+                                    color: Color.fromRGBO(255, 250, 244, 1),
+                                    fontSize: 16,
+                                    
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // Create Account Link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Not registered yet? ",
+                              style: TextStyle(fontSize: 14, color: Colors.black54),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                _launchURL();
+                              },
+                              child: Text(
+                                "Create Account",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -193,15 +348,6 @@ class HomeScreen extends StatelessWidget {
               },
               child: Text('Go to Details'),
             ),
-          //   SizedBox(height: 20),
-          //   ElevatedButton(
-          //       onPressed: () {
-          //         Navigator.push(
-          //           context,
-          //           MaterialPageRoute(builder: (context) => ResultsScreen()),
-          //         );
-          //       },
-          //       child: Text('Go To Results'))
           ],
         ),
       ),
