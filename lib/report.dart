@@ -192,11 +192,11 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
         }
       }
     }
-
+    Timestamp firestoreTimestamp = Timestamp.fromDate(DateTime.now());
     Map<String, dynamic> assessmentData = {
       'userId': userId,
       'assessmentId': assessmentId,
-      'timestamp': timestamp,
+      'timestamp': firestoreTimestamp,
       'title': title.isNotEmpty ? title : "Untitled Assessment",
       'description': description.isNotEmpty ? description : "No description provided",
       'overallScore': overallScore,
@@ -242,8 +242,8 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
             children: [
               Text("REBA Assessment Summary", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
 
-              SizedBox(height: 10),
-              Text("Timestamp: $timestamp", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              // SizedBox(height: 10),
+              // Text("Timestamp: $timestamp", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
 
               SizedBox(height: 10),
               TextField(

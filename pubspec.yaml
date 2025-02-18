@@ -73,6 +73,10 @@ flutter:
         - asset : assets/poppins_regular.ttf
         - asset: assets/Poppins-SemiBold.ttf
           weight: 600
+        - asset : assets/Poppins-ExtraLight.ttf
+          weight: 200
+        - asset : assets/Poppins-Light.ttf
+          weight: 300
         
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic

@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
+
 
 
 // import 'splash_screen.dart';
@@ -12,6 +15,8 @@ import 'list.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 // import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -313,40 +318,489 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>{
+  int _currentIndex = 0;
+
+  final List<Widget> _pages = [
+    HomeContent(), // Home Page
+    Placeholder(), // Assessment Page (Replace with actual page)
+    Placeholder(), // Placeholder for QR Scanner
+    Placeholder(), // Settings Page
+    Placeholder(), // Profile Page
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text('Welcome to MoveNet App'),
+      body: _pages[_currentIndex],
+
+      // Bottom Navigation Bar
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          if (index != 2) {
+            // Prevent navigation on QR button
+            setState(() => _currentIndex = index);
+          }
+        },
+        selectedItemColor: Colors.green,
+        unselectedItemColor: Colors.grey,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: "Assessment"),
+          BottomNavigationBarItem(icon: Icon(Icons.qr_code_scanner), label: ""),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+        ],
       ),
-      body: Center(
-        child: Column(
-          // Use Column to stack widgets vertically
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to ImagePickerScreen
-                Navigator.push(
+
+      // Floating QR Scanner Button
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => ImagePickerScreen()),
                 );
-              },
-              child: Text('Go to Image Picker'),
-            ),
-            SizedBox(height: 20), // Space between the buttons
+        },
+        backgroundColor: Colors.green,
+        child: Icon(Icons.qr_code_scanner, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+    );
+  }
+}
 
-            ElevatedButton(
-              onPressed: () {
-                // Navigate to SimpleForm
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AssessmentListPage()),
-                );
+class HomeContent extends StatefulWidget {
+  final String? user;
+
+  HomeContent({this.user});
+
+  @override
+  _HomeContentState createState() => _HomeContentState();
+}
+
+Future<Map<String, int>> fetchAssessmentData(String filter) async {
+  // Get the current date and calculate the date range based on the filter
+  DateTime now = DateTime.now();
+  DateTime startDate;
+  print('ada');
+  switch (filter) {
+    case "This Week":
+      startDate = now.subtract(Duration(days: now.weekday - 1)); // Start of the week
+      break;
+    case "This Month":
+      startDate = DateTime(now.year, now.month, 1); // First day of the month
+      break;
+    case "This Year":
+      startDate = DateTime(now.year, 1, 1); // First day of the year
+      break;
+    default:
+      startDate = now;
+  }
+  final test = await FirebaseFirestore.instance.collection('reba_assessments');
+  print('test: $test');
+  // Query assessments from Firestore based on the date range
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+      .collection('reba_assessments')
+      .where('userId', isEqualTo: userId)
+      .where('timestamp', isGreaterThanOrEqualTo: startDate)
+      .get();
+  print('query :$querySnapshot');
+  print('start: $startDate');
+
+  // Count the number of assessments and risk results
+  print(querySnapshot.docs);
+  int totalAssessments = querySnapshot.docs.length;
+  print('total: $totalAssessments');
+  // int riskResults = 100;
+  int riskResults = querySnapshot.docs.where((doc) {
+      var overallScore = doc['overallScore'];
+      // Ensure 'overallScore' is a number and check if it's greater than 1
+      if (overallScore is num) {
+        return overallScore > 1;
+      }
+      return false;
+    }).length;
+
+  return {
+    'totalAssessments': totalAssessments,
+    'riskResults': riskResults,
+  };
+}
+
+// Home Content Widget
+class _HomeContentState extends State<HomeContent> {
+  final userId = FirebaseAuth.instance.currentUser?.uid; // Get the current user ID
+  final String? userName = FirebaseAuth.instance.currentUser?.displayName;
+  String selectedFilter = "This Month"; // Default selected option
+  int totalAssessments = 0;
+  int riskResults = 0;
+
+  // Method to fetch the data based on the selected filter
+ 
+  @override
+  void initState() {
+    super.initState();
+    _fetchData(selectedFilter); // Fetch data when widget is initialized
+  }
+
+   Future<void> _fetchData(String filter) async {
+    var data = await fetchAssessmentData(filter);
+    setState(() {
+      totalAssessments = data['totalAssessments'] ?? 0;
+      riskResults = data['riskResults'] ?? 0;
+    });
+  }
+  // HomeContent({this.userName = "User"}); // Default to "User" if name is null
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        physics: BouncingScrollPhysics(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Greeting
+              SizedBox(height: 10),
+              Row(
+                children: [
+                  CircleAvatar(
+                    // radius: 20,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.sunny, color: Color.fromRGBO(77, 197, 150, 1)),
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    "Hi, $userName!", // Display Google Name
+                    style: TextStyle(
+                      fontFamily: 'Poppins', 
+                      fontSize: 16, 
+                      fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+                
+
+              SizedBox(height: 10),
+
+              // Search Bar
+              Container(
+                // padding: EdgeInsets.only
+                decoration: BoxDecoration(
+                  color: Color.fromRGBO(244, 246, 245, 1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: TextField(
+                  decoration: InputDecoration(
+                    hintText: "Search your assessment results...",
+                    border: InputBorder.none,
+                    prefixIcon: Icon(Icons.search),
+                    contentPadding: EdgeInsets.symmetric(vertical: 16)
+                  ),
+                   style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w200,
+                    ),
+                    
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // Assessment Recap
+             Container(
+  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+  decoration: BoxDecoration(
+    color: Color.fromRGBO(244, 246, 245, 1),
+    borderRadius: BorderRadius.circular(20),
+  ),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Row for title with background & dropdown
+      Container(
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Color.fromRGBO(77, 197, 150, 1), // Light green background
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Title text
+            Text(
+              "Your Assessment Recap",
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 12, fontWeight: FontWeight.w600,
+                color: Colors.white),
+            ),
+            Container(
+              // width: 100,
+              // height: 40,
+              padding: EdgeInsets.only(left:10, top: 0),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20), // 20px border radius
+                // border: Border.all(color: Colors.blueAccent
+                color: Color.fromRGBO(55, 149, 112, 1) // Border color
+            ),
+            child:
+            // Dropdown button inside the same green box
+            DropdownButton<String>(
+              value: selectedFilter,
+              icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 8,
+              ),
+              underline: SizedBox(), // Removes default underline
+              dropdownColor: Colors.grey,
+              // dropdown // Optional for dropdown color
+              isExpanded: false,
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    selectedFilter = newValue;
+                    _fetchData(selectedFilter);
+                  });
+                }
               },
-              child: Text('Go to Details'),
+              items: ["This Month", "This Week", "This Year"]
+                  .map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value, style:TextStyle(color : Colors.white)),
+                );
+              }).toList(),
+            ),
+            ),
+          ],
+        ),
+      ),
+
+      SizedBox(height: 10),
+
+      // Row for assessment details
+      Row(
+        
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        
+         children: [
+          recapItem(
+            Icons.history, 
+            "$totalAssessments Assessment", 
+            "See Details", 
+            iconBackgroundColor: Color.fromRGBO(55, 149, 112, 100),  // Green background for assessment
+            iconColor: Colors.white  // White icon color for visibility
+          ),
+          recapItem(
+            Icons.warning, 
+            "$riskResults Risk Result", 
+            "See Details", 
+            iconBackgroundColor: Color.fromRGBO(232, 183, 10, 1),  // Yellow background for risk results
+            iconColor: Colors.white // Black icon color for contrast
+          ),
+        ],
+      ),
+    ],
+  ),
+),
+
+              SizedBox(height: 20),
+
+              // Latest Assessments
+              Row(
+  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Distribute the items across the row
+  children: [
+    Text("Your Latest Assessment", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Poppins', color: Colors.black)),
+    GestureDetector(
+      onTap: () {
+        // Navigate to the AssessmentListPage when the arrow is tapped
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AssessmentListPage()),
+        );
+      },
+      child: Container(
+        padding: EdgeInsets.all(8), // Add padding inside the circle
+        decoration: BoxDecoration(
+          shape: BoxShape.circle, // Makes the background circular
+          color: Color.fromRGBO(244, 246, 245, 1), // Circle background color
+        ),
+        child: Icon(
+          Icons.arrow_forward_ios, // Arrow icon
+          color: Colors.black, // Icon color
+          size: 16, // Icon size
+        ),
+      ),
+    ),
+  ],
+),
+
+              
+              SizedBox(height: 10),
+
+              // Latest Assessments List
+              
+
+StreamBuilder<QuerySnapshot>(
+  stream: FirebaseFirestore.instance
+      .collection('reba_assessments')
+      .where('userId', isEqualTo: userId) // Filter by the userId field
+      .snapshots(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (snapshot.hasError) {
+      return const Center(child: Text("Error fetching data"));
+    }
+
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return const Center(child: Text("No assessments available"));
+    }
+
+    var assessments = snapshot.data!.docs;
+
+    return Column(
+      children: List.generate(assessments.length, (index) {
+        var assessment = assessments[index].data() as Map<String, dynamic>;
+
+        // Safely retrieve the title
+        String title = (assessment['title'] ?? 'Unknown').toString();
+
+        // Safely retrieve the timestamp (now as a Timestamp, not String)
+        Timestamp timestamp = assessment['timestamp'] as Timestamp;
+        DateTime timestampDate = timestamp.toDate();
+
+        String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
+        String imageUrl = (assessment['images'][0]['url'] ?? '').toString();
+
+        return assessmentCard(
+          title,
+          formattedDate,
+          imageUrl, // Convert to string for display or use any DateFormat you want
+        );
+      }),
+    );
+  },
+),
+
+              
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+ 
+  // Widget for recap items
+Widget recapItem(IconData icon, String title, String subtitle, {required Color iconBackgroundColor, required Color iconColor}) {
+  return Expanded(
+    child: 
+    
+    GestureDetector(
+      onTap: () {
+        // Explicitly navigate to the same page when pressed
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AssessmentListPage()),
+        );
+      },
+      child: Padding(padding : EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(6), // Padding around the icon to create the circle
+            decoration: BoxDecoration(
+              color: iconBackgroundColor, // Background color (green or yellow)
+              shape: BoxShape.circle, // Make it circular
+            ),
+            child: Icon(icon, size: 16, color: iconColor), // Icon with color
+          ),
+          SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontSize: 12, fontFamily: 'Poppins', fontWeight: FontWeight.w600, color: Color.fromRGBO(55, 149, 112, 100))),
+                Text(subtitle, style: TextStyle(fontSize: 8, fontFamily: 'Poppins', fontWeight: FontWeight.w300, color: Color.fromRGBO(55, 149, 112, 100))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    
+    ),
+    ),
+  );
+}
+  // Widget for assessment card
+
+ Widget assessmentCard(String title, String timestamp, String imageUrl) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            // Placeholder for Assessment Image (you can add an image URL from Firestore)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                imageUrl,
+                width: 50, 
+                height: 50, 
+                fit: BoxFit.cover,
+                // color: Colors.grey, // You can replace this with an actual image
+              ),
+            ),
+            SizedBox(width: 10),
+
+            // Assessment Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title, // Dynamic title
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    "📅 $timestamp",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+
+            // Status Indicator (Optional)
+            Align(
+              alignment: Alignment.topRight,
+              child: Icon(Icons.more_vert, color: Colors.grey),
             ),
           ],
         ),
@@ -354,3 +808,4 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+
