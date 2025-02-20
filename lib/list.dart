@@ -104,36 +104,49 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ⬇️ UI LIST SESUAI GAMBAR
-class AssessmentListPage extends StatelessWidget {
+class AssessmentListPage extends StatefulWidget {
+  @override
+  _AssessmentListPageState createState() => _AssessmentListPageState();
+}
+
+class _AssessmentListPageState extends State<AssessmentListPage> {
+  String userId = FirebaseAuth.instance.currentUser?.uid ?? "anonymous";
+  String selectedFilter = "All"; // Default filter
+  bool isLatest = true; // Sorting toggle
+  String searchQuery = ""; // Search input
+
   @override
   Widget build(BuildContext context) {
-    String userId = FirebaseAuth.instance.currentUser?.uid ?? "anonymous";
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text("Recent Assessment", style: TextStyle(color: Colors.black, fontSize:16, fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
-        // centerTitle: true,
+        title: Text(
+          "Recent Assessment",
+          style: TextStyle(color: Colors.black, fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+        ),
         leading: IconButton(
           icon: Icon(Icons.history, color: Colors.black),
-          onPressed: () {
-         ;
-          },
+          onPressed: () {},
         ),
-        
       ),
       body: Column(
         children: [
-          // ✅ Search Bar & Filter
+          // 🔍 Search, Filter, and Sort
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
+                // 🔍 Search Bar
                 Expanded(
                   child: TextField(
+                    onChanged: (value) {
+                      setState(() {
+                        searchQuery = value.toLowerCase();
+                      });
+                    },
                     decoration: InputDecoration(
-                      hintText: "Search...",
+                      hintText: "Search by title...",
                       prefixIcon: Icon(Icons.search_rounded),
                       filled: true,
                       fillColor: Color.fromRGBO(244, 246, 245, 1),
@@ -145,183 +158,230 @@ class AssessmentListPage extends StatelessWidget {
                   ),
                 ),
                 SizedBox(width: 10),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: Icon(Icons.filter_alt_rounded, size: 18),
-                  label: Text("Today"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromRGBO(244, 246, 245, 1),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
+
+                // 📌 Filter Dropdown
+                DropdownButton<String>(
+                  value: selectedFilter,
+                  onChanged: (newValue) {
+                    setState(() {
+                      selectedFilter = newValue!;
+                    });
+                  },
+                  items: ["All", "This Week", "This Month", "This Year"].map((filter) {
+                    return DropdownMenuItem<String>(
+                      value: filter,
+                      child: Text(filter),
+                    );
+                  }).toList(),
                 ),
                 SizedBox(width: 10),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: Icon(Icons.sort, size: 18),
-                  label: Text("Latest"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color.fromRGBO(244, 246, 245, 1),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
+
+                // 🔄 Sort Button
+                IconButton(
+                  icon: Icon(isLatest ? Icons.sort : Icons.swap_vert),
+                  onPressed: () {
+                    setState(() {
+                      isLatest = !isLatest;
+                    });
+                  },
                 ),
               ],
             ),
           ),
 
-          // ✅ List dari Firestore
+          // 📋 Firestore List
           Expanded(
-  child: StreamBuilder(
-    stream: FirebaseFirestore.instance
-        .collection('reba_assessments')
-        .where('userId', isEqualTo: userId)
-        .snapshots(),
-    builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());
-      }
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return Center(child: Text("No assessments found."));
-      }
-      
-      return ListView(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        children: snapshot.data!.docs.map((doc) {
-          var data = doc.data() as Map<String, dynamic>;
+            child: StreamBuilder(
+              stream: _getFilteredStream(),
+              builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text("No assessments found."));
+                }
 
-          // Validasi URL gambar dari Firestore
-          String imageUrl = ''; // Default image
-          if (data.containsKey('images') &&
-    data['images'] is List<dynamic> &&
-    (data['images'] as List<dynamic>).isNotEmpty &&
-    data['images'][0] is Map<String, dynamic> &&
-    (data['images'][0] as Map<String, dynamic>).containsKey('url')) {
-  imageUrl = (data['images'][0] as Map<String, dynamic>)['url'].toString();
-}
+                // 🔎 Apply search filter on title
+                var filteredDocs = snapshot.data!.docs.where((doc) {
+                  var data = doc.data() as Map<String, dynamic>;
+                  String title = (data['title'] as String?)?.toLowerCase() ?? "";
+                  return title.contains(searchQuery);
+                }).toList();
 
-          // Konversi timestamp Firestore ke format yang dapat dibaca
-          String formattedDate = "Unknown Date";
-          if (data.containsKey('timestamp') && data['timestamp'] is Timestamp) {
-            DateTime timestampDate = (data['timestamp'] as Timestamp).toDate();
-            formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
-          }
+                if (filteredDocs.isEmpty) {
+                  return Center(child: Text("No matching assessments."));
+                }
 
-          return Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            margin: EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 🖼 Image on the left
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      imageUrl,
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Icon(Icons.image_not_supported, size: 60, color: Colors.grey),
-                    ),
-                  ),
-                  SizedBox(width: 10), // Space between image and text
+                return ListView(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  children: filteredDocs.map((doc) {
+                    var data = doc.data() as Map<String, dynamic>;
 
-                  // 📝 Text & Button Section
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          (data['title'] as String?) ?? "",
-                          style: TextStyle(
-                            fontFamily: 'Poppins',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: Color.fromRGBO(55, 149, 112, 1),
-                          ),
-                          maxLines: 1, // Prevents overflow
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: 8),
+                   // 🖼 Get Image URL
+                    String imageUrl = _getImageUrl(data);
 
-                        // 🗓 Date
-                        Row(
+                    // 🗓 Convert Timestamp
+                    String formattedDate = _formatTimestamp(data['timestamp']);
+                    return Card(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      margin: EdgeInsets.only(bottom: 12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.calendar_month_rounded, size: 14),
+                            // 📷 Image
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                imageUrl,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Icon(Icons.image_not_supported, size: 60, color: Colors.grey),
+                              ),
+                            ),
                             SizedBox(width: 10),
-                            Text(formattedDate, style: TextStyle(fontFamily:'Poppins', fontSize: 8, color: Colors.black)),
-                          ],
-                        ),
-                        SizedBox(height: 4),
 
-                        // ⚠ Risk Found
-                        Row(
-                          children: [
-                            Icon(Icons.manage_search_rounded, size: 14),
-                            SizedBox(width: 10),
-                            Text("No risk found", style: TextStyle(fontFamily:'Poppins', fontSize: 8, color: Colors.black)),
-                          ],
-                        ),
-                        SizedBox(height: 4),
+                            // 📝 Text & Details
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    (data['title'] as String?) ?? "WS Produksi",
+                                    style: TextStyle(
+                                      fontFamily: 'Poppins',
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: Color.fromRGBO(55, 149, 112, 1),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 2),
 
-                        // 📊 RULA Score
-                        Row(
-                          children: [
-                            Icon(Icons.edit_document, size: 14, ),
-                            SizedBox(width: 5),
-                            Text("RULA Score: 4", style: TextStyle(fontFamily:'Poppins', fontSize: 8, color: Colors.black)),
-                          ],
-                        ),
-                        SizedBox(height: 8), // Space before button
+                                  // 🗓 Date
+                                  Row(
+                                    children: [
+                                      Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                                      SizedBox(width: 5),
+                                      Text(formattedDate, style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    ],
+                                  ),
+                                  SizedBox(height: 2),
 
-                        // 📌 Move Button Below Text
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: SizedBox(
-                            // width: 120,
-                            height: 28, // Prevents full width stretch
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AssessmentDetailsPage(
-                                      assessmentId: doc.id,
-                                      data: data,
+                                  // ⚠ Risk Found
+                                  Row(
+                                    children: [
+                                      Icon(Icons.warning, size: 14, color: Colors.orange),
+                                      SizedBox(width: 5),
+                                      Text("No risk found", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    ],
+                                  ),
+                                  SizedBox(height: 2),
+
+                                  // 📊 RULA Score
+                                  Row(
+                                    children: [
+                                      Icon(Icons.bar_chart, size: 14, color: Colors.blue),
+                                      SizedBox(width: 5),
+                                      Text("RULA Score: 4", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // 📌 Button Bottom Right
+                            Align(
+                              alignment: Alignment.bottomRight,
+                              child: SizedBox(
+                                height: 28,
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AssessmentDetailsPage(
+                                          assessmentId: doc.id,
+                                          data: data,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    textStyle: TextStyle(fontSize: 12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
                                     ),
                                   ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                textStyle: TextStyle(fontSize: 12),
-                                shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
+                                  child: Text("See details", style: TextStyle(color: Colors.white)),
+                                ),
                               ),
-                              child: Text("See details", style: TextStyle(fontFamily:'Poppins', fontWeight:FontWeight.w700, fontSize:8, color: Color.fromRGBO(52, 168, 83, 1))),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
             ),
-          );
-
-        }).toList(),
-      );
-    },
-  ),
-),
+          ),
         ],
       ),
     );
   }
+
+  // 📌 Get Firestore Stream with Filtering & Sorting
+  Stream<QuerySnapshot> _getFilteredStream() {
+    Query query = FirebaseFirestore.instance
+        .collection('reba_assessments')
+        .where('userId', isEqualTo: userId)
+        .orderBy('timestamp', descending: isLatest);
+
+    DateTime now = DateTime.now();
+    DateTime startDate;
+
+    if (selectedFilter == "This Week") {
+      startDate = now.subtract(Duration(days: now.weekday - 1));
+      query = query.where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+    } else if (selectedFilter == "This Month") {
+      startDate = DateTime(now.year, now.month, 1);
+      query = query.where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+    } else if (selectedFilter == "This Year") {
+      startDate = DateTime(now.year, 1, 1);
+      query = query.where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+    }
+
+    return query.snapshots();
+  }
 }
+
+
+
+  // 🖼 Get Image URL
+  String _getImageUrl(Map<String, dynamic> data) {
+    if (data.containsKey('images') &&
+        data['images'] is List<dynamic> &&
+        (data['images'] as List<dynamic>).isNotEmpty &&
+        data['images'][0] is Map<String, dynamic> &&
+        (data['images'][0] as Map<String, dynamic>).containsKey('url')) {
+      return (data['images'][0] as Map<String, dynamic>)['url'].toString();
+    }
+    return 'https://via.placeholder.com/60';
+  }
+
+  // 🗓 Format Timestamp
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp is Timestamp) {
+      return DateFormat('dd-MM-yyyy HH:mm:ss').format(timestamp.toDate());
+    }
+    return "Unknown Date";
+  }
+
+
