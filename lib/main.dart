@@ -4,7 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
-
+import 'dart:ui';
 
 
 // import 'splash_screen.dart';
@@ -319,21 +319,31 @@ class _SignInScreenState extends State<SignInScreen> {
 }
 
 class HomeScreen extends StatefulWidget {
+
   @override
 
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>{
+class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    HomeContent(), // Home Page
-    Placeholder(), // Assessment Page (Replace with actual page)
-    Placeholder(), // Placeholder for QR Scanner
-    Placeholder(), // Settings Page
-    Placeholder(), // Profile Page
-  ];
+  late final List<Widget> _pages;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeContent(onTabChanged: (index) {
+        setState(() => _currentIndex = index);
+      }),
+      AssessmentListPage(), // ✅ Halaman Assessment List
+      Placeholder(), // QR Scanner (Nanti diganti)
+      Placeholder(), // Settings Page
+      Placeholder(), // Profile Page
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -341,49 +351,114 @@ class _HomeScreenState extends State<HomeScreen>{
       backgroundColor: Colors.white,
       body: _pages[_currentIndex],
 
-      // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          if (index != 2) {
-            // Prevent navigation on QR button
-            setState(() => _currentIndex = index);
-          }
-        },
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: "Assessment"),
-          BottomNavigationBarItem(icon: Icon(Icons.qr_code_scanner), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: "Settings"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+      // Bottom Navigation Bar dengan QR Code Floating Button
+      bottomNavigationBar: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          // Bottom Navigation Bar
+          Container(
+            margin: EdgeInsets.only(bottom: 10), // ✅ Naikkan sedikit
+            child: BottomAppBar(
+              shape: CircularNotchedRectangle(),
+              notchMargin: 6,
+              elevation: 0,
+              color: Colors.white,
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20), // ✅ Bikin lebih smooth
+                  border: Border.all(color: Color.fromRGBO(239, 239, 239, 1), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 1,
+                      spreadRadius: 1,
+                      offset: Offset(0, 0), // Efek mengambang
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    buildNavItem(Icons.home_rounded, "Home", 0),
+                    buildNavItem(Icons.assignment, "Assess", 1),
+                    SizedBox(width: 48), // ✅ Space for floating QR Box
+                    buildNavItem(Icons.settings, "Settings", 3),
+                    buildNavItem(Icons.person, "Profile", 4),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Custom QR Code Button dengan Background Lingkaran Hijau
+          Positioned(
+            bottom: 25, // ✅ Turunkan sedikit agar lebih pas
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Placeholder()), // QR Scanner Page
+                );
+              },
+              child: Container(
+                width: 65, // ✅ Lebih kecil dari FloatingActionButton biasa
+                height: 65,
+                decoration: BoxDecoration(
+                  color: Colors.green, // ✅ Warna background hijau
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                      offset: Offset(0, 3), // ✅ Efek shadow agar tampak floating
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Icon(Icons.qr_code_scanner, color: Colors.white, size: 30), // ✅ Ikon QR Scanner
+                ),
+              ),
+            ),
+          ),
         ],
       ),
+    );
+  }
 
-      // Floating QR Scanner Button
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => ImagePickerScreen()),
-                );
-        },
-        backgroundColor: Colors.green,
-        child: Icon(Icons.qr_code_scanner, color: Colors.white),
+  // Function untuk membuat navigation item
+  Widget buildNavItem(IconData icon, String label, int index) {
+    return GestureDetector(
+      onTap: () {
+        if (index != 2) setState(() => _currentIndex = index);
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: _currentIndex == index ? Colors.black : Colors.grey, size: 22),
+          SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: _currentIndex == index ? FontWeight.w600 : FontWeight.w400,
+              color: _currentIndex == index ? Colors.black : Colors.grey,
+            ),
+          ),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }
 
+
 class HomeContent extends StatefulWidget {
   final String? user;
+  final Function(int) onTabChanged;
 
-  HomeContent({this.user});
+  HomeContent({this.user, required this.onTabChanged});
 
   @override
   _HomeContentState createState() => _HomeContentState();
@@ -633,10 +708,12 @@ class _HomeContentState extends State<HomeContent> {
     GestureDetector(
       onTap: () {
         // Navigate to the AssessmentListPage when the arrow is tapped
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => AssessmentListPage()),
-        );
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(builder: (context) => AssessmentListPage()),
+        // );
+        print('ontabindex1');
+        widget.onTabChanged(1);
       },
       child: Container(
         padding: EdgeInsets.all(8), // Add padding inside the circle
@@ -720,10 +797,12 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
     GestureDetector(
       onTap: () {
         // Explicitly navigate to the same page when pressed
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => AssessmentListPage()),
-        );
+        // Navigator.push(
+        //   context,
+        //   MaterialPageRoute(builder: (context) => AssessmentListPage()),
+        // );
+        print('ontab');
+        widget.onTabChanged(1);
       },
       child: Padding(padding : EdgeInsets.symmetric(vertical: 10, horizontal: 10),
       child: Row(
