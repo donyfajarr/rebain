@@ -339,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _currentIndex = index);
       }),
       AssessmentListPage(), // ✅ Halaman Assessment List
-      Placeholder(), // QR Scanner (Nanti diganti)
+      ImagePickerScreen(), // QR Scanner (Nanti diganti)
       Placeholder(), // Settings Page
       Placeholder(), // Profile Page
     ];
@@ -399,7 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Placeholder()), // QR Scanner Page
+                  MaterialPageRoute(builder: (context) => ImagePickerScreen()), // QR Scanner Page
                 );
               },
               child: Container(
@@ -521,7 +521,7 @@ class _HomeContentState extends State<HomeContent> {
   String selectedFilter = "This Month"; // Default selected option
   int totalAssessments = 0;
   int riskResults = 0;
-
+  String searchQuery = "";
   // Method to fetch the data based on the selected filter
  
   @override
@@ -580,11 +580,15 @@ class _HomeContentState extends State<HomeContent> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: TextField(
+                  onChanged: (value) {
+                      setState(() {
+                        searchQuery = value.toLowerCase();
+                      });},
                   decoration: InputDecoration(
                     hintText: "Search your assessment results...",
                     border: InputBorder.none,
                     prefixIcon: Icon(Icons.search),
-                    contentPadding: EdgeInsets.symmetric(vertical: 16)
+                    contentPadding: EdgeInsets.symmetric(vertical: 16),
                   ),
                    style: TextStyle(
                       fontFamily: 'Poppins',
@@ -737,50 +741,73 @@ class _HomeContentState extends State<HomeContent> {
               // Latest Assessments List
               
 
-StreamBuilder<QuerySnapshot>(
-  stream: FirebaseFirestore.instance
-      .collection('reba_assessments')
-      .where('userId', isEqualTo: userId) // Filter by the userId field
-      .snapshots(),
-  builder: (context, snapshot) {
-    if (snapshot.connectionState == ConnectionState.waiting) {
-      return const Center(child: CircularProgressIndicator());
-    }
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('reba_assessments')
+                  .where('userId', isEqualTo: userId) // Filter by the userId field
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-    if (snapshot.hasError) {
-      return const Center(child: Text("Error fetching data"));
-    }
+                if (snapshot.hasError) {
+                  return const Center(child: Text("Error fetching data"));
+                }
 
-    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-      return const Center(child: Text("No assessments available"));
-    }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text("No assessments available"));
+                }
 
-    var assessments = snapshot.data!.docs;
+                var assessments = snapshot.data!.docs;
+                if (searchQuery.isNotEmpty){
+                      assessments = assessments.where((doc) {
+                        var data = doc.data() as Map<String, dynamic>;
+                        String title = (data['title'] as String?)?.toLowerCase() ?? "";
+                        return title.contains(searchQuery.toLowerCase());
+                      }).toList();
+                      // var assessment = filteredDocs[index].data() as Map<String, dynamic>;
+                    }
+                    
+                if (assessments.isEmpty) {
+                    return const Center(child: 
+                    Text("No Matching Assessment", 
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w300, 
+                    )));
+                  }
+                    
+                  
+                
+                return Column(
+                  children: List.generate(assessments.length, (index) {
+                //     if (filteredDocs.isEmpty){
+                //   return Center(child:Text("No Matching Assessment"));
+                    var assessment = assessments[index].data() as Map<String, dynamic>;
 
-    return Column(
-      children: List.generate(assessments.length, (index) {
-        var assessment = assessments[index].data() as Map<String, dynamic>;
+                    
 
-        // Safely retrieve the title
-        String title = (assessment['title'] ?? 'Unknown').toString();
+                    // Safely retrieve the title
+                    String title = (assessment['title'] ?? 'Unknown').toString();
 
-        // Safely retrieve the timestamp (now as a Timestamp, not String)
-        Timestamp timestamp = assessment['timestamp'] as Timestamp;
-        DateTime timestampDate = timestamp.toDate();
+                    // Safely retrieve the timestamp (now as a Timestamp, not String)
+                    Timestamp timestamp = assessment['timestamp'] as Timestamp;
+                    DateTime timestampDate = timestamp.toDate();
 
-        String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
-        String imageUrl = (assessment['images'][0]['url'] ?? '').toString();
+                    String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
+                    String imageUrl = (assessment['images'][0]['url'] ?? '').toString();
 
-        return assessmentCard(
-          title,
-          formattedDate,
-          imageUrl, // Convert to string for display or use any DateFormat you want
-        );
-      }),
-    );
-  },
-),
-
+                    return assessmentCard(
+                      title,
+                      formattedDate,
+                      imageUrl, // Convert to string for display or use any DateFormat you want
+                    );
+                  }),
+                );
+              },
+            ),
               
             ],
           ),

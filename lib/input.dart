@@ -982,7 +982,11 @@ Widget build(BuildContext context) {
 
   return Scaffold(
     appBar: AppBar(
-      title: Text('MoveNet Keypoints for $currentSegment'),
+      title: Text('REBA Assessment', style:TextStyle(fontSize:16, fontFamily:'Poppins', fontWeight: FontWeight.w600)),
+       leading: IconButton(
+    icon: Icon(Icons.arrow_back),
+    onPressed: _previousSegment, // Navigates back to the last segment
+  ),
     ),
     body: Padding(
   padding: const EdgeInsets.all(8.0),
@@ -990,57 +994,108 @@ Widget build(BuildContext context) {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       if (currentSegment.toLowerCase() == "force load score") ...[
-        Text(
-          "Enter Force/Load (kg):",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // Grey Background Container with Centered Image
+      Container(
+        height: 250, // Adjust as needed
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.grey[200], // Light grey background
+          borderRadius: BorderRadius.circular(12), // Rounded corners
         ),
-        TextField(
-          controller: _loadController,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: "Load in kg",
-            border: OutlineInputBorder(),
+        child: Center(
+          child: Image.asset(
+            'assets/forceload.png', // Ensure this path is correct
+            height: 100, // Adjust image size as needed
+            fit: BoxFit.contain,
           ),
-          onChanged: (value) {
-            setState(() {
-              double load = double.tryParse(value) ?? 0;
-              segmentScores["forceLoad"] = (load < 5) ? 0 : (load <= 10) ? 1 : 2;
-              print(segmentScores);
-            });
-          },
         ),
-        SizedBox(height: 15),
-        Text(
-          "Is there a shock or rapid build-up of force?",
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      SizedBox(height: 15), // Space between image and text
+
+      Text(
+        "Berapakah beban yang diangkut oleh subjek?", // Your custom text here
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'Poppins',
+          color: Colors.black,
         ),
-        CheckboxListTile(
-          title: Text("Yes (+1)"),
-          value: segmentScores["shockAdded"] == 1,
-          onChanged: (bool? value) {
-            setState(() {
-              if (value == true) {
-                segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
-                segmentScores["shockAdded"] = 1;
-              } else {
-                segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) - 1;
-                if (segmentScores["forceLoad"]! < 0) segmentScores["forceLoad"] = 0; // Prevent negative values
-                segmentScores["shockAdded"] = 0;
-              }
-              print(segmentScores);
-            });
-          },
+        textAlign: TextAlign.center,
+      ),
+
+      SizedBox(height: 25), // Space before next input
+
+      Text(
+        "Enter Force/Load (kg):",
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      SizedBox(height: 8),
+
+      TextField(
+        controller: _loadController,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: "Load in kg",
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
-        SizedBox(height: 20),
-        ElevatedButton(
+        onChanged: (value) {
+          setState(() {
+            double load = double.tryParse(value) ?? 0;
+            segmentScores["forceLoad"] = (load < 5) ? 0 : (load <= 10) ? 1 : 2;
+            print(segmentScores);
+          });
+        },
+      ),
+      SizedBox(height: 15),
+
+      Text(
+        "Is there a shock or rapid build-up of force?",
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      ),
+      CheckboxListTile(
+        title: Text("Yes (+1)"),
+        value: segmentScores["shockAdded"] == 1,
+        activeColor: Colors.green,
+        onChanged: (bool? value) {
+          setState(() {
+            if (value == true) {
+              segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
+              segmentScores["shockAdded"] = 1;
+            } else {
+              segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) - 1;
+              if (segmentScores["forceLoad"]! < 0) segmentScores["forceLoad"] = 0;
+              segmentScores["shockAdded"] = 0;
+            }
+            print(segmentScores);
+          });
+        },
+      ),
+      SizedBox(height: 15),
+
+      Center(
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          ),
           onPressed: _nextSegment,
-          child: Text('Continue to Next Segment'),
+          child: Text(
+            'Next',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
         ),
-        if (_currentStep > 0)
-              ElevatedButton(
-                onPressed: _previousSegment,
-                child: Text("Back"),
-              ),
+      ),
+    ],
+  ),
       ]
      else if (currentSegment.toLowerCase() == "arm supported") ...[
         Text("Is the arm supported or person leaning?"),
@@ -1211,114 +1266,178 @@ Widget build(BuildContext context) {
       ]      
       else ...[
   
-        Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Text(
-            "Segment: $currentSegment",
-            style: TextStyle(fontSize: 18),
-          ),
-        ),
-        
-        _capturedImages[currentSegment] != null
-            ? Builder(builder: (context) {
-                // Read the image dimensions
-                final imageFile = _capturedImages[currentSegment]!;
-                final int originalWidth = image_lib.decodeImage(imageFile.readAsBytesSync())!.width;
-                final int originalHeight = image_lib.decodeImage(imageFile.readAsBytesSync())!.height;
-
-                // Scale image to fit inside 256x256
-                double scale = 256 / max(originalWidth, originalHeight);
-                double newWidth = originalWidth * scale;
-                double newHeight = originalHeight * scale;
-                double paddingX = (256 - newWidth) / 2;
-                double paddingY = (256 - newHeight) / 2;
-                print('Keypoint Current : $_keypointsMap');
-
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Ensure the image is always inside a 256x256 box
-                    Container(
-                      width: 256,
-                      height: 256,
-                      color: Theme.of(context).scaffoldBackgroundColor, // Background padding
-                      child: Center(
-                        child: Image.file(
-                          imageFile,
-                          width: newWidth,
-                          height: newHeight,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    // Draw keypoints correctly on top
-                    if (_keypointsMap[currentSegment] != null)
-      CustomPaint(
-        size: Size(256, 256),
-        painter: VectorPainter(
-          _keypointsMap[currentSegment]!,
-          currentSegment, // Pass the segment name
-          paddingX,
-          paddingY,
-        ),
-      ),
-                      // if (_keypointsMap[currentSegment] != null)
-                      
-                      //   CustomPaint(
-                      //     size: Size(256, 256),
-                      //     painter: KeypointsPainter(
-                      //       _keypointsMap[currentSegment]!,
-                      //       paddingX,
-                      //       paddingY,
-                      //     ),
-                      //   ),
-    //                   if (currentSegment.toLowerCase() == "wrist" &&
-    // _handKeypoints[currentSegment] != null &&
-    // _handKeypoints[currentSegment]!.isNotEmpty &&
-    // _showKeypoints)
-    //                     CustomPaint(
-    //                       size: Size(256, 256),
-    //                       painter: HandKeypointsPainter(
-    //                         _handKeypoints[currentSegment]!,
-    //                         paddingX,
-    //                         paddingY,
-    //                       ),
-    //                     ),
-                  ],
-                );
-              })
-            : Center(child: Text("No image captured for $currentSegment")),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        Column(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    // Header Section
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           
-            ElevatedButton(
-              onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
-              child: Text('Add from Gallery'),
+          Text(
+            "Take a photo or import an existing image to evaluate posture.",
+            style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+          ),
+        ],
+      ),
+    ),
+
+    SizedBox(height: 10),
+
+    // Image Display Area
+    Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Segment: $currentSegment",
+            style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: 10),
+
+          _capturedImages[currentSegment] != null
+              ? Builder(
+                  builder: (context) {
+                    final imageFile = _capturedImages[currentSegment]!;
+                    final int originalWidth = image_lib.decodeImage(imageFile.readAsBytesSync())!.width;
+                    final int originalHeight = image_lib.decodeImage(imageFile.readAsBytesSync())!.height;
+                    double scale = 256 / max(originalWidth, originalHeight);
+                    double newWidth = originalWidth * scale;
+                    double newHeight = originalHeight * scale;
+                    double paddingX = (256 - newWidth) / 2;
+                    double paddingY = (256 - newHeight) / 2;
+
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 256,
+                          height: 256,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.file(
+                              imageFile,
+                              width: newWidth,
+                              height: newHeight,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                        if (_keypointsMap[currentSegment] != null)
+                          CustomPaint(
+                            size: Size(256, 256),
+                            painter: VectorPainter(
+                              _keypointsMap[currentSegment]!,
+                              currentSegment,
+                              paddingX,
+                              paddingY,
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                )
+              : Container(
+                  width: 256,
+                  height: 256,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.green, width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      "No image captured for $currentSegment",
+                      style: TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins'),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+          SizedBox(height: 20),
+        ],
+      ),
+    ),
+
+    SizedBox(height: 20),
+
+    // Button Section
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
-            SizedBox(width: 10),
-            ElevatedButton(
-              onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
-              child: Text('Add from Camera'),
+            onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
+            child: Text('Gallery', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
+          ),
+          SizedBox(width: 10),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
             ),
-          ],
-        ),
-        if (_currentStep > 0)
-              ElevatedButton(
-                onPressed: _previousSegment,
-                child: Text("Back"),
-              ),
-              
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: _capturedImages[currentSegment] != null
-              ? _nextSegment
-              : null,
-          child: Text(_currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next"),
-       ),
-      ]
-    ],
-  ),
-));
+            onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
+            child: Text('Scan', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    ),
+
+    SizedBox(height: 20),
+
+    // Navigation Buttons
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        children: [
+          // if (_currentStep > 0)
+          //   ElevatedButton(
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: Colors.grey[300],
+          //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          //     ),
+          //     onPressed: _previousSegment,
+          //     child: Text("Back", style: TextStyle(color: Colors.black)),
+          //   ),
+          SizedBox(height: 10),
+          Align(
+            alignment: Alignment.center,
+            child : 
+             ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
+            child: Text(
+              _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+            )
+         
+        ],
+      ),
+    ),
+  ],
+),
+],],),),);
 }
 }
