@@ -406,7 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 65, // ✅ Lebih kecil dari FloatingActionButton biasa
                 height: 65,
                 decoration: BoxDecoration(
-                  color: Colors.green, // ✅ Warna background hijau
+                  color: Color.fromRGBO(55, 149, 112, 1), // ✅ Warna background hijau
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(

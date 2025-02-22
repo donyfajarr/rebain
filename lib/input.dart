@@ -994,276 +994,416 @@ Widget build(BuildContext context) {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       if (currentSegment.toLowerCase() == "force load score") ...[
-        Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      // Grey Background Container with Centered Image
-      Container(
-        height: 250, // Adjust as needed
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.grey[200], // Light grey background
-          borderRadius: BorderRadius.circular(12), // Rounded corners
-        ),
-        child: Center(
-          child: Image.asset(
-            'assets/forceload.png', // Ensure this path is correct
-            height: 100, // Adjust image size as needed
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
-      SizedBox(height: 15), // Space between image and text
-
-      Text(
-        "Berapakah beban yang diangkut oleh subjek?", // Your custom text here
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Poppins',
-          color: Colors.black,
-        ),
-        textAlign: TextAlign.center,
-      ),
-
-      SizedBox(height: 25), // Space before next input
-
-      Text(
-        "Enter Force/Load (kg):",
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-      SizedBox(height: 8),
-
-      TextField(
-        controller: _loadController,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          labelText: "Load in kg",
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-        onChanged: (value) {
-          setState(() {
-            double load = double.tryParse(value) ?? 0;
-            segmentScores["forceLoad"] = (load < 5) ? 0 : (load <= 10) ? 1 : 2;
-            print(segmentScores);
-          });
-        },
-      ),
-      SizedBox(height: 15),
-
-      Text(
-        "Is there a shock or rapid build-up of force?",
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
-      CheckboxListTile(
-        title: Text("Yes (+1)"),
-        value: segmentScores["shockAdded"] == 1,
-        activeColor: Colors.green,
-        onChanged: (bool? value) {
-          setState(() {
-            if (value == true) {
-              segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
-              segmentScores["shockAdded"] = 1;
-            } else {
-              segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) - 1;
-              if (segmentScores["forceLoad"]! < 0) segmentScores["forceLoad"] = 0;
-              segmentScores["shockAdded"] = 0;
-            }
-            print(segmentScores);
-          });
-        },
-      ),
-      SizedBox(height: 15),
-
-      Center(
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
+  Expanded(
+    child: SingleChildScrollView(
+      padding: EdgeInsets.all(8), // Add padding to prevent cut-off
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Grey Background Container with Centered Image
+          Container(
+            height: 250, // Adjust as needed
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Color.fromRGBO(244, 246, 245, 1), // Light grey background
+              borderRadius: BorderRadius.circular(12), // Rounded corners
             ),
-            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-          ),
-          onPressed: _nextSegment,
-          child: Text(
-            'Next',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-        ),
-      ),
-    ],
-  ),
-      ]
-     else if (currentSegment.toLowerCase() == "arm supported") ...[
-        Text("Is the arm supported or person leaning?"),
-        Row(
-          children: [
-            Radio(
-              value: 1,
-              groupValue: segmentScores["armSupport"] ?? 0,
-              onChanged: (int? value) {
-                setState(() {
-                  if (segmentScores["armSupport"] == 0) {
-                    // If switching from "No" to "Yes", subtract 1
-                    segmentScores["upperArmScore"] = (segmentScores["upperArmScore"] ?? 0) - 1;
-                    if (segmentScores["upperArmScore"]! < 0) segmentScores["upperArmScore"] = 0; // Prevent negative
-                  }
-                  segmentScores["armSupport"] = value ?? 0;
-                });
-              },
-            ),
-            Text("Yes"),
-            Radio(
-              value: 0,
-              groupValue: segmentScores["armSupport"] ?? 0,
-              onChanged: (int? value) {
-                setState(() {
-                  if (segmentScores["armSupport"] == 1) {
-                    // If switching from "Yes" to "No", undo the -1 (add back 1)
-                    segmentScores["upperArmScore"] = (segmentScores["upperArmScore"] ?? 0) + 1;
-                  }
-                  segmentScores["armSupport"] = value ?? 0;
-                });
-              },
-            ),
-            Text("No"),
-          ],
-        ),
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: _nextSegment,
-          child: Text('Continue to Next Segment'),
-        ),
-        if (_currentStep > 0)
-          ElevatedButton(
-            onPressed: _previousSegment,
-            child: Text("Back"),
-          ),
-      ] else if (currentSegment.toLowerCase() == "coupling score") ...[
-        Text("Select Coupling Quality:"),
-        DropdownButton<int>(
-          value: segmentScores["coupling"] ?? 0,
-          items: [
-            DropdownMenuItem(value: 0, child: Text("Good")),
-            DropdownMenuItem(value: 1, child: Text("Fair")),
-            DropdownMenuItem(value: 2, child: Text("Poor")),
-          ],
-          onChanged: (value) {
-            setState(() {
-              segmentScores["coupling"] = value!;
-              print(segmentScores);
-            });
-          },
-        ),
-          SizedBox(height: 20),
-            ElevatedButton(
-          onPressed: _nextSegment,
-          child: Text('Continue to Next Segment'),
-        ),
-        if (_currentStep > 0)
-              ElevatedButton(
-                onPressed: _previousSegment,
-                child: Text("Back"),
+            child: Center(
+              child: Image.asset(
+                'assets/forceload.png', // Ensure this path is correct
+                height: 100, // Adjust image size as needed
+                fit: BoxFit.contain,
               ),
-      ]
-      else if (currentSegment.toLowerCase() == "activity score") ...[
-  Text("Select Activity Score:"),
+            ),
+          ),
+          SizedBox(height: 10),
 
-  // 1st Condition
-  Text(
-    "1 or more body parts are held for longer than 1 minute (static)",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  ),
-  CheckboxListTile(
-    title: Text("Yes (+1)"),
-    value: segmentScores["staticPosture"] == 1,
-    onChanged: (bool? value) {
-      setState(() {
-        if (value == true) {
-          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + 1;
-          segmentScores["staticPosture"] = 1;
-        } else {
-          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) - 1;
-          segmentScores["staticPosture"] = 0;
-        }
-        print(segmentScores);
-      });
-    },
-  ),
+          // Centered Text Below the Image
+          Text(
+            "Force/Load Analysis",
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 15),
 
-  SizedBox(height: 20),
+          Text(
+            "Enter Force/Load (kg):",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+            textAlign: TextAlign.left,
+          ),
+          SizedBox(height: 8),
 
-  // 2nd Condition
-  Text(
-    "Repeated small range actions (more than 4x per minute)",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  ),
-  CheckboxListTile(
-    title: Text("Yes (+1)"),
-    value: segmentScores["repeatedAction"] == 1,
-    onChanged: (bool? value) {
-      setState(() {
-        if (value == true) {
-          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + 1;
-          segmentScores["repeatedAction"] = 1;
-        } else {
-          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) - 1;
-          segmentScores["repeatedAction"] = 0;
-        }
-        print(segmentScores);
-      });
-    },
-  ),
+          TextField(
+            controller: _loadController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: "Load in kg",
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (value) {
+              setState(() {
+                double load = double.tryParse(value) ?? 0;
+                segmentScores["forceLoad"] = (load < 5) ? 0 : (load <= 10) ? 1 : 2;
+                print(segmentScores);
+              });
+            },
+          ),
+          SizedBox(height: 15),
 
-  SizedBox(height: 20),
+          Text(
+            "Is there a shock or rapid build-up of force?",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+            textAlign: TextAlign.start,
+          ),
+          CheckboxListTile(
+            title: Text("Yes (+1)", style: TextStyle(fontFamily: 'Poppins'),),
+            value: segmentScores["shockAdded"] == 1,
+            activeColor: Color.fromRGBO(55, 149, 112, 1),
+            onChanged: (bool? value) {
+              setState(() {
+                if (value == true) {
+                  segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) + 1;
+                  segmentScores["shockAdded"] = 1;
+                } else {
+                  segmentScores["forceLoad"] = (segmentScores["forceLoad"] ?? 0) - 1;
+                  if (segmentScores["forceLoad"]! < 0) segmentScores["forceLoad"] = 0;
+                  segmentScores["shockAdded"] = 0;
+                }
+                print(segmentScores);
+              });
+            },
+          ),
+          SizedBox(height: 20),
 
-  // 3rd Condition
-  Text(
-    "Action causes rapid large range changes in postures or unstable base",
-    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Center(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
+              onPressed: _nextSegment,
+              child: Text(
+                'Next',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
   ),
-  CheckboxListTile(
-    title: Text("Yes (+1)"),
-    value: segmentScores["unstableBase"] == 1,
-    onChanged: (bool? value) {
-      setState(() {
-        if (value == true) {
-          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + 1;
-          segmentScores["unstableBase"] = 1;
-        } else {
-          segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) - 1;
-          segmentScores["unstableBase"] = 0;
-        }
-        print(segmentScores);
-      });
-    },
+]
+     else if (currentSegment.toLowerCase() == "arm supported") ...[
+  Expanded(
+    child: SingleChildScrollView(
+      padding: EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Grey Background Box with Centered Image
+          Container(
+            height: 250,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Color.fromRGBO(244, 246, 245, 1), // Light grey background
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/arm_support.png', // Update path if needed
+                height: 50,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
+
+          // Centered Text Below the Image
+          Text(
+            "Arm Support Analysis",
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 15),
+
+          // Question
+          Text(
+            "Is the arm supported or is the person leaning?",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+            textAlign: TextAlign.left,
+          ),
+          SizedBox(height: 10),
+
+          // Radio Buttons for Yes/No
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Radio(
+                value: 1,
+                groupValue: segmentScores["armSupport"] ?? 0,
+                onChanged: (int? value) {
+                  setState(() {
+                    if (segmentScores["armSupport"] == 0) {
+                      segmentScores["upperArmScore"] = (segmentScores["upperArmScore"] ?? 0) - 1;
+                      if (segmentScores["upperArmScore"]! < 0) segmentScores["upperArmScore"] = 0;
+                    }
+                    segmentScores["armSupport"] = value ?? 0;
+                  });
+                },
+              ),
+              Text("Yes", style: TextStyle(fontFamily: 'Poppins')),
+              SizedBox(width: 20),
+              Radio(
+                value: 0,
+                groupValue: segmentScores["armSupport"] ?? 0,
+                onChanged: (int? value) {
+                  setState(() {
+                    if (segmentScores["armSupport"] == 1) {
+                      segmentScores["upperArmScore"] = (segmentScores["upperArmScore"] ?? 0) + 1;
+                    }
+                    segmentScores["armSupport"] = value ?? 0;
+                  });
+                },
+              ),
+              Text("No", style: TextStyle(fontFamily: 'Poppins')),
+            ],
+          ),
+          SizedBox(height: 20),
+
+          // Next and Back Buttons
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            ),
+            onPressed: _nextSegment,
+            child: Text(
+              'Next',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
+            ),
+          ),
+          SizedBox(height: 10),
+
+          
+        ],
+      ),
+    ),
   ),
-        SizedBox(height:20),
-           ElevatedButton(
+]
+      else if (currentSegment.toLowerCase() == "coupling score") ...[
+  Expanded(
+    child: SingleChildScrollView(
+      padding: EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Grey Background Box with Centered Image
+          Container(
+            height: 250,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/arm_support.png', // Update with actual path
+                height: 50,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
+
+          // Centered Text Below the Image
+          Text(
+            "Coupling Score Analysis",
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 15),
+
+          // Dropdown Selection
+          Text("Select Coupling Quality:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins')),
+          DropdownButton<int>(
+            value: segmentScores["coupling"] ?? 0,
+            items: [
+              DropdownMenuItem(value: 0, child: Text("Good")),
+              DropdownMenuItem(value: 1, child: Text("Fair")),
+              DropdownMenuItem(value: 2, child: Text("Poor")),
+            ],
+            onChanged: (value) {
+              setState(() {
+                segmentScores["coupling"] = value!;
+              });
+            },
+          ),
+          SizedBox(height: 20),
+
+          // Buttons
+          ElevatedButton(
+            style:ElevatedButton.styleFrom(
+              backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            ),
+            onPressed: _nextSegment,
+            child: Text('Next', style:TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins')),
+          ),
+          
+        ],
+      ),
+    ),
+  ),
+]
+else if (currentSegment.toLowerCase() == "activity score") ...[
+  Expanded(
+    child: SingleChildScrollView(
+      padding: EdgeInsets.all(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Grey Background Box with Centered Image
+          Container(
+            height: 250,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Color.fromRGBO(244, 246, 245, 1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/activity_score.png', // Update with actual path
+                height: 100,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          SizedBox(height: 10),
+
+          // Centered Text Below the Image
+          Text(
+            "Activity Score",
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: 'Poppins',
+              fontWeight: FontWeight.w600,
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 15),
+
+          // Condition 1
+          Text(
+            "1 or more body parts are held for longer than 1 minute (static)",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+          ),
+          CheckboxListTile(
+            title: Text("Yes (+1)", style:TextStyle(fontFamily: 'Poppins'),),
+            value: segmentScores["staticPosture"] == 1,
+            activeColor: Color.fromRGBO(55, 149, 112, 1),
+            onChanged: (bool? value) {
+              setState(() {
+                segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + (value! ? 1 : -1);
+                segmentScores["staticPosture"] = value ? 1 : 0;
+              });
+            },
+          ),
+          SizedBox(height: 10),
+
+          // Condition 2
+          Text(
+            "Repeated small range actions (more than 4x per minute)",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+          ),
+          CheckboxListTile(
+            title: Text("Yes (+1)", style:TextStyle(fontFamily: 'Poppins')),
+            activeColor: Color.fromRGBO(55, 149, 112, 1),
+            value: segmentScores["repeatedAction"] == 1,
+            onChanged: (bool? value) {
+              setState(() {
+                segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + (value! ? 1 : -1);
+                segmentScores["repeatedAction"] = value ? 1 : 0;
+              });
+            },
+          ),
+          SizedBox(height: 10),
+
+          // Condition 3
+          Text(
+            "Action causes rapid large range changes in postures or unstable base",
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+          ),
+          CheckboxListTile(
+            title: Text("Yes (+1)", style:TextStyle(fontFamily: 'Poppins')),
+            activeColor: Color.fromRGBO(55, 149, 112, 1),
+            value: segmentScores["unstableBase"] == 1,
+            onChanged: (bool? value) {
+              setState(() {
+                segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + (value! ? 1 : -1);
+                segmentScores["unstableBase"] = value ? 1 : 0;
+              });
+            },
+          ),
+          SizedBox(height: 20),
+
+          // Confirm & Review Button
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
             onPressed: () {
               Navigator.push(
                 context,
-        MaterialPageRoute(
-          builder: (context) => RebaReportScreen(
-            bodyPartScores: segmentScores,
-            capturedImages: _capturedImages,
-            keypoints: _keypointsMap,
-            handkeypoints: _handKeypoints,
+                MaterialPageRoute(
+                  builder: (context) => RebaReportScreen(
+                    bodyPartScores: segmentScores,
+                    capturedImages: _capturedImages,
+                    keypoints: _keypointsMap,
+                    handkeypoints: _handKeypoints,
+                  ),
+                ),
+              );
+            },
+            child: Text("Confirm & Review Assessment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins')),
           ),
-              ),
-           );
-           },
-           child: Text("Confirm & Review Assessment"),
-           ),
-           if (_currentStep > 0)
-              ElevatedButton(
-                onPressed: _previousSegment,
-                child: Text("Back"),
-              ),
-      ]      
+        ],
+      ),
+    ),
+  ),
+]
+
       else ...[
   
         Column(
@@ -1423,12 +1563,12 @@ Widget build(BuildContext context) {
              ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Color.fromRGBO(55, 149, 112, 1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
             onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
             child: Text(
               _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
             ),
           ),
             )
