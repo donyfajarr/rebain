@@ -12,6 +12,8 @@ import 'input.dart'; // Import your input.dart file
 import 'create.dart'; // Ensure form.dart contains SimpleForm
 import 'package:firebase_core/firebase_core.dart';
 import 'list.dart';
+import 'details.dart';
+import 'profil.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -341,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
       AssessmentListPage(), // ✅ Halaman Assessment List
       ImagePickerScreen(), // QR Scanner (Nanti diganti)
       Placeholder(), // Settings Page
-      Placeholder(), // Profile Page
+      ProfilePage(), // Profile Page
     ];
   }
 
@@ -761,11 +763,13 @@ class _HomeContentState extends State<HomeContent> {
 
                 var assessments = snapshot.data!.docs;
                 if (searchQuery.isNotEmpty){
-                      assessments = assessments.where((doc) {
+                      assessments = assessments.where((doc) 
+                      {
                         var data = doc.data() as Map<String, dynamic>;
                         String title = (data['title'] as String?)?.toLowerCase() ?? "";
                         return title.contains(searchQuery.toLowerCase());
                       }).toList();
+                      
                       // var assessment = filteredDocs[index].data() as Map<String, dynamic>;
                     }
                     
@@ -780,16 +784,21 @@ class _HomeContentState extends State<HomeContent> {
                   }
                     
                   
+                  
                 
                 return Column(
                   children: List.generate(assessments.length, (index) {
                 //     if (filteredDocs.isEmpty){
                 //   return Center(child:Text("No Matching Assessment"));
+                    var doc = assessments[index]; // Dapatkan dokumen Firestore
+                    var data = doc.data() as Map<String, dynamic>; 
                     var assessment = assessments[index].data() as Map<String, dynamic>;
 
                     
 
                     // Safely retrieve the title
+                    String assessmentId = doc.id;
+
                     String title = (assessment['title'] ?? 'Unknown').toString();
 
                     // Safely retrieve the timestamp (now as a Timestamp, not String)
@@ -800,9 +809,11 @@ class _HomeContentState extends State<HomeContent> {
                     String imageUrl = (assessment['images'][0]['url'] ?? '').toString();
 
                     return assessmentCard(
+                      context, assessmentId,
                       title,
                       formattedDate,
-                      imageUrl, // Convert to string for display or use any DateFormat you want
+                      imageUrl,
+                      data, // Convert to string for display or use any DateFormat you want
                     );
                   }),
                 );
@@ -861,8 +872,20 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
 }
   // Widget for assessment card
 
- Widget assessmentCard(String title, String timestamp, String imageUrl) {
-    return Card(
+ Widget assessmentCard(BuildContext context, String assessmentId, String title, String timestamp, String imageUrl, Map<String, dynamic> data) { 
+  return InkWell(
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AssessmentDetailsPage(
+            assessmentId: assessmentId,
+            data:data,
+          ),
+        ),
+      );
+    },
+    child: Card(
       margin: EdgeInsets.symmetric(vertical: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -870,7 +893,7 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
         padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
-            // Placeholder for Assessment Image (you can add an image URL from Firestore)
+            // Placeholder for Assessment Image
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(
@@ -878,7 +901,12 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
                 width: 50, 
                 height: 50, 
                 fit: BoxFit.cover,
-                // color: Colors.grey, // You can replace this with an actual image
+                errorBuilder: (context, error, stackTrace) => Container(
+                  width: 50,
+                  height: 50,
+                  color: Colors.grey.shade300,
+                  child: Icon(Icons.image_not_supported, color: Colors.grey),
+                ),
               ),
             ),
             SizedBox(width: 10),
@@ -889,7 +917,7 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title, // Dynamic title
+                    title, 
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -903,7 +931,6 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
               ),
             ),
 
-            // Status Indicator (Optional)
             Align(
               alignment: Alignment.topRight,
               child: Icon(Icons.more_vert, color: Colors.grey),
@@ -911,7 +938,8 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 

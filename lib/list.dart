@@ -276,7 +276,7 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
                                   // ⚠ Risk Found
                                   Row(
                                     children: [
-                                      Icon(Icons.warning, size: 14, color: Colors.orange),
+                                      Icon(Icons.warning, size: 14, color: Colors.grey),
                                       SizedBox(width: 5),
                                       Text("No risk found", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                     ],
@@ -286,9 +286,9 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
                                   // 📊 RULA Score
                                   Row(
                                     children: [
-                                      Icon(Icons.bar_chart, size: 14, color: Colors.blue),
+                                      Icon(Icons.bar_chart, size: 14, color: Colors.grey),
                                       SizedBox(width: 5),
-                                      Text("RULA Score: 4", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                      Text("REBA Score: 4", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                     ],
                                   ),
                                 ],
