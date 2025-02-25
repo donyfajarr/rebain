@@ -151,7 +151,6 @@ class VectorPainter extends CustomPainter {
     List<List<int>> connections = [];
     List<int> relevantKeypoints = [];
     Offset? midShoulder, midHip, midKnee;
-
      switch (segmentName.toLowerCase()) {
       case "neck":
         relevantKeypoints = [0, 5, 6, 11, 12];
@@ -166,6 +165,7 @@ class VectorPainter extends CustomPainter {
         midHip = _calculateMidpoint(keypoints, 11, 12, size);
         midKnee = _calculateMidpoint(keypoints, 13, 14, size);
         connections = [[-1, -2], [-2, -3]];
+        // print('ada');
         break;
 
       case "legs & posture":
@@ -174,6 +174,7 @@ class VectorPainter extends CustomPainter {
           [11, 13], [13, 15], // Left leg
           [12, 14], [14, 16] // Right leg
         ];
+        // print('ada juga');
         break;
 
       case "upper arm":
@@ -242,14 +243,15 @@ class VectorPainter extends CustomPainter {
         final dx = keypoint.x * size.width;
         final dy = keypoint.y * size.height;
         canvas.drawCircle(Offset(dx, dy), 4.0, paintKeypoints);
+        
       }
+      // print(keypoint);
     }
 
     // Draw midpoints
     if (midShoulder != null) canvas.drawCircle(midShoulder!, 4.0, paintKeypoints);
     if (midHip != null) canvas.drawCircle(midHip!, 4.0, paintKeypoints);
     if (midKnee != null) canvas.drawCircle(midKnee!, 4.0, paintKeypoints);
-
     // Draw connections
     for (var pair in connections) {
       Offset? p1, p2;
@@ -257,17 +259,17 @@ class VectorPainter extends CustomPainter {
       if (pair[0] == -1) p1 = midShoulder;
       else if (pair[0] == -2) p1 = midHip;
       else if (pair[0] == -3) p1 = midKnee;
-      else p1 = keypoints[pair[0]].confidence > 0.1
+      else p1 = keypoints[pair[0]].confidence > 0
           ? Offset(keypoints[pair[0]].x * size.width, keypoints[pair[0]].y * size.height)
           : null;
 
       if (pair[1] == -1) p2 = midShoulder;
       else if (pair[1] == -2) p2 = midHip;
       else if (pair[1] == -3) p2 = midKnee;
-      else p2 = keypoints[pair[1]].confidence > 0.1
+      else p2 = keypoints[pair[1]].confidence > 0
           ? Offset(keypoints[pair[1]].x * size.width, keypoints[pair[1]].y * size.height)
           : null;
-
+      
       if (p1 != null && p2 != null) {
         canvas.drawLine(p1, p2, paintLines);
       }
@@ -1002,7 +1004,7 @@ Widget build(BuildContext context) {
         children: [
           // Grey Background Container with Centered Image
           Container(
-            height: 250, // Adjust as needed
+            height: 256, // Adjust as needed
             width: double.infinity,
             decoration: BoxDecoration(
               color: Color.fromRGBO(244, 246, 245, 1), // Light grey background
@@ -1405,7 +1407,6 @@ else if (currentSegment.toLowerCase() == "activity score") ...[
 ]
 
       else ...[
-  
         Column(
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
@@ -1547,15 +1548,6 @@ else if (currentSegment.toLowerCase() == "activity score") ...[
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         children: [
-          // if (_currentStep > 0)
-          //   ElevatedButton(
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: Colors.grey[300],
-          //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          //     ),
-          //     onPressed: _previousSegment,
-          //     child: Text("Back", style: TextStyle(color: Colors.black)),
-          //   ),
           SizedBox(height: 10),
           Align(
             alignment: Alignment.center,

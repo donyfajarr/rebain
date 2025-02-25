@@ -115,6 +115,8 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
   bool isLatest = true; // Sorting toggle
   String searchQuery = ""; // Search input
 
+  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -223,6 +225,27 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
 
                     // 🗓 Convert Timestamp
                     String formattedDate = _formatTimestamp(data['timestamp']);
+                    int overallScore = (data['overallScore'] ?? 0) as int;
+                    String risk = 'No risk found';
+                  
+                    print(overallScore);
+                      // Ensure 'overallScore' is a number and check if it's greater than 1
+                    if (overallScore == 1) {
+                      risk = 'Negligible Risk';
+                    }
+                    else if(overallScore >= 2 && overallScore <= 3){
+                      risk = 'Low Risk. Change may be needed';
+                    }
+                    else if(overallScore >=4 && overallScore<=7){
+                      risk = 'Medium Risk. Further Investigate. Change Soon.';
+                    }
+                    else if (overallScore >=8 && overallScore <=10){
+                      risk = 'High Risk. Investigate and Implement Change';
+                    }
+                    else{
+                      risk = 'Very High Risk. Implement Change';
+                    }
+
                     return Card(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       margin: EdgeInsets.only(bottom: 12),
@@ -261,7 +284,7 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  SizedBox(height: 2),
+                                  SizedBox(height: 6),
 
                                   // 🗓 Date
                                   Row(
@@ -271,24 +294,33 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
                                       Text(formattedDate, style: TextStyle(fontSize: 12, color: Colors.grey)),
                                     ],
                                   ),
-                                  SizedBox(height: 2),
+                                  SizedBox(height: 4),
 
                                   // ⚠ Risk Found
                                   Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start, // Ensure alignment
                                     children: [
                                       Icon(Icons.warning, size: 14, color: Colors.grey),
                                       SizedBox(width: 5),
-                                      Text("No risk found", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                      Expanded( // Allows text to wrap instead of overflowing
+                                        child: Text(
+                                          risk,
+                                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                                          softWrap: true,
+                                          overflow: TextOverflow.ellipsis, // Adds "..." if too long
+                                          maxLines: 2, // Adjust as needed
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                  SizedBox(height: 2),
+                                  SizedBox(height: 4),
 
                                   // 📊 RULA Score
                                   Row(
                                     children: [
                                       Icon(Icons.bar_chart, size: 14, color: Colors.grey),
                                       SizedBox(width: 5),
-                                      Text("REBA Score: 4", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                      Text("REBA Score: $overallScore", style: TextStyle(fontSize: 12, color: Colors.grey)),
                                     ],
                                   ),
                                 ],

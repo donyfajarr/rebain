@@ -99,6 +99,9 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   TextEditingController _titleController = TextEditingController();
   late String timestamp;
   late int overallScore;
+  late int rebaScoreA;
+  late int rebaScoreB;
+  late int rebaScoreC;
 
   final Map<String, String> bodyPartToSegment = {
     "neckScore": "Neck",
@@ -113,14 +116,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     "activityScore": "Activity Score",
   };
 
-  @override
-  void initState() {
-    super.initState();
-    timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()); // Get current time
-    overallScore = calculateOverallScore(widget.bodyPartScores); // Compute REBA final score
-  }
-
-  int calculateOverallScore(Map<String, int> scores) {
+  Map<String, int> calculateOverallScore(Map<String, int> scores) {
     // print(scores['neckScore']);
     int rebaScoreA = getRebaScoreA(scores['neckScore'] ?? 0, scores['legScore'] ?? 0, scores['trunkScore'] ?? 0) + (scores['forceLoad'] ?? 0);
     print('rebascoreA : $rebaScoreA');
@@ -131,8 +127,25 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     print('rebascoreC : $rebaScoreC');
     int rebaScore = rebaScoreC + (scores['activityScore'] ?? 0);
     print('total reba : $rebaScore');
-    return rebaScore;
+    return {
+    'rebaScoreA': rebaScoreA,
+    'rebaScoreB': rebaScoreB,
+    'rebaScoreC': rebaScoreC,
+    'totalReba': rebaScore,
+  };
 
+  }
+  @override
+  void initState() {
+    super.initState();
+    timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()); // Get current time
+    // overallScore = calculateOverallScore(widget.bodyPartScores); // Compute REBA final score
+    Map<String, int> rebaScores = calculateOverallScore(widget.bodyPartScores);
+  
+    rebaScoreA = rebaScores['rebaScoreA']!;
+    rebaScoreB = rebaScores['rebaScoreB']!;
+    rebaScoreC = rebaScores['rebaScoreC']!;
+    overallScore = rebaScores['totalReba']!;
   }
 
  void _submitAssessment() async {
@@ -202,6 +215,9 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
       'overallScore': overallScore,
       'bodyScores': widget.bodyPartScores,
       'images': images,
+      'rebaScoreA' : rebaScoreA,
+      'rebaScoreB' : rebaScoreB,
+      'rebaScoreC' : rebaScoreC,
     };
 
     print("🚀 Submitting Assessment: $assessmentData");
@@ -229,67 +245,167 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   }
 }
 
+  final Map<String, String> displayBodyPartNames = {
+  "neckScore": "Neck Position",
+  "trunkScore": "Trunk Position",
+  "legScore": "Legs & Posture Position",
+  "forceLoad": "Force Load Score",
+  "shockAdded" : "Shock Added",
+  "upperArmScore" : "Upper Arm Position",
+  "lowerArmScore" : "Lower Arm Position",
+  "wristScore" : "Wrist",
+  "coupling": "Coupling Score",
+  "activityScore": "Activity Score",
+};
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('REBA Report')),
+      appBar: AppBar(title: Text('Asessment Confirmation', style:TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 18))),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("REBA Assessment Summary", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-
-              // SizedBox(height: 10),
-              // Text("Timestamp: $timestamp", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-
-              SizedBox(height: 10),
+             SizedBox(height: 8),
               TextField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                  labelText: "Enter Title",
-                  border:OutlineInputBorder(),
+                labelText: "Enter Title",
+                labelStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey),
                 ),
-                // maxLines: 3,
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
+            ),
 
               SizedBox(height:10),
               TextField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
-                  labelText: "Enter Title",
-                  border: OutlineInputBorder(),
+                  labelText: "Enter Description",
+                   labelStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
                 maxLines: 3,
               ),
+          SizedBox(height: 20),
+          Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  "REBA Results Analysis",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+              ),
+            ),
+             SizedBox(height: 20),
 
-              SizedBox(height: 20),
-              Text("Overall Score: $overallScore", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
+          ...widget.bodyPartScores.entries.map((entry) {
+            String bodyPartKey = entry.key;
+            int score = entry.value;
+            if (bodyPartKey == "staticPosture" || bodyPartKey == "repeatedAction") return SizedBox();
 
-              SizedBox(height: 10),
-              Text("Body Scores:", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            // Get display name, fallback to original key if not found
+            String bodyPart = displayBodyPartNames[bodyPartKey] ?? bodyPartKey;
+            String? relatedSegment = bodyPartToSegment[bodyPartKey];
+            File? imageFile = relatedSegment != null ? widget.capturedImages[relatedSegment] : null;
 
-              ...widget.bodyPartScores.entries.map((entry) {
-                String bodyPart = entry.key;
-                int score = entry.value;
-                String? relatedSegment = bodyPartToSegment[bodyPart];
-                File? imageFile = relatedSegment != null ? widget.capturedImages[relatedSegment] : null;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Left Section (Image or Body Part Name)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        bodyPart, // Always show body part name
+                        style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Poppins',
+                      ),
+                      ),
+                      SizedBox(height: 6),
+                      if (imageFile != null && imageFile.existsSync())
+                        ClipRRect(
+                          // borderRadius: BorderRadius.circular(10),
+                          child: Image.file(imageFile, width: 100, height: 80, fit: BoxFit.cover),
+                        ),
+                    ],
+                  ),
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 15),
-                    Text("$bodyPart:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    if (imageFile != null && imageFile.existsSync())
-                      Image.file(imageFile, height: 150, fit: BoxFit.cover)
-                    else
-                      Text("Image not found", style: TextStyle(color: Colors.red)),
-                    Text("Score: $score"),
-                  ],
-                );
-              }).toList(),
+                  SizedBox(width: 16), // Add space between image/text and score box
+                  Spacer(), // Push score box to the right
+
+                  // Score Box (Right Side)
+                  Column(
+                    children: [
+                      Container(
+                        width: 60,
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Color.fromRGBO(235, 237, 240, 1),
+                          // borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "$score",
+                            style: TextStyle(fontSize: 14, fontFamily:'Poppins', fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 4), // Space between box and "Score" text
+                      Text(
+                        "Score",
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'Poppins',
+                          ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(width: 10), // Slight gap on the right side
+                ],
+              ),
+            );
+          }).toList(),
+
+// Overall REBA Score (Centered)
+SizedBox(height: 20),
+Center(
+  child: Column(
+    children: [
+      Container(
+        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: Color.fromRGBO(235, 237, 240, 1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          "$overallScore",
+          style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+      ),
+      SizedBox(height: 8),
+      Text(
+        "REBA Score",
+        style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+      ),
+    ],
+  ),
+),
+
 
               SizedBox(height: 20),
               Center(

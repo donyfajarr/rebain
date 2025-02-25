@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'list.dart';
 import 'package:intl/intl.dart';
+import 'input.dart';
 
 class AssessmentDetailsPage extends StatelessWidget {
   final String assessmentId;
@@ -108,14 +109,17 @@ class AssessmentDetailsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(),
-            SizedBox(height: 16),
+            SizedBox(height: 30),
             _buildAnalysisSection("Neck, Trunk and Leg Analysis", ["Neck", "Trunk", "Legs & Posture"], data),
-            _buildOtherScores(["Posture Score", "Force/Load Score"], data),
+            _buildOtherScores(["Force Load Score"], data),
             _buildScoreABox(),
-            SizedBox(height: 16),
+            SizedBox(height: 10),
             _buildAnalysisSection("Arm & Wrist Analysis", ["Upper Arm", "Lower Arm", "Wrist"], data),
-            _buildOtherScores(["Force Load Score", "Arm Supported", "Coupling Score", "Activity Score"], data),
-            _buildScoreABox(),
+            _buildOtherScores(["Coupling Score"], data),
+            _buildScoreBBox(),
+            _buildOtherScores(["Activity Score"], data),
+            _buildScoreCBox(),
+            _buildScoreBox(),
              SizedBox(height: 20),
              Center(
                 child: ElevatedButton(
@@ -173,7 +177,8 @@ class AssessmentDetailsPage extends StatelessWidget {
         children: [
           Text(data['title'].toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color:Color.fromRGBO(55, 149, 112, 1))),
           SizedBox(height: 8),
-          
+          Row(children: [Icon(Icons.description_rounded, size: 16), SizedBox(width: 6), Text(data['description'].toString(), style:TextStyle(fontFamily: 'Poppins', fontSize: 12))]),
+          SizedBox(height: 4),
           Row(children: [Icon(Icons.calendar_today, size: 16), SizedBox(width: 6), Text(formattedDate, style:TextStyle(fontFamily: 'Poppins', fontSize: 12))]),
           SizedBox(height: 4),
           Row(children: [Icon(Icons.bar_chart_rounded, size: 16), SizedBox(width: 6), Text("REBA Score: ${data['overallScore'] ?? '-'}", style:TextStyle(fontFamily: 'Poppins', fontSize: 12))]),
@@ -185,10 +190,10 @@ class AssessmentDetailsPage extends StatelessWidget {
   }
 
   Widget _buildAnalysisSection(String title, List<String> segments, Map<String, dynamic> data) {
+    
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      // Centered Title
       Center(
         child: Text(
           title,
@@ -204,12 +209,28 @@ class AssessmentDetailsPage extends StatelessWidget {
 
       Column(
         children: segments.map((segment) {
+          // print(data['images']);
+          // print('oi');
           var imageData = (data['images'] as List<dynamic>?)
               ?.firstWhere((img) => img['segment'] == segment, orElse: () => null);
-          
+          print('Segment: ${imageData?['segment']}');
+          print('Keypoints: ${imageData?['keypoints']}');
+
+         List<Keypoint> keypoints = [];
+          if (imageData != null && imageData is Map<String, dynamic> &&
+              imageData.containsKey('keypoints') && imageData['keypoints'] is List) {
+            keypoints = (imageData['keypoints'] as List)
+                .map((point) => Keypoint(
+                      (point['x'] as num).toDouble(), 
+                      (point['y'] as num).toDouble(), 
+                      0.1 // Default confidence value (adjust if needed)
+                    ))
+                .toList();
+          }
+
           String scoreKey = scoreMapping[segment] ?? "";
           String score = data['bodyScores']?[scoreKey]?.toString() ?? "-";
-
+          
           return Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
             child: Row(
@@ -218,7 +239,6 @@ class AssessmentDetailsPage extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Segment Title
                     Text(
                       '$segment Position',
                       style: TextStyle(
@@ -229,7 +249,7 @@ class AssessmentDetailsPage extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
 
-                    // Image Container
+                    // Image with keypoints overlay
                     Container(
                       width: 100,
                       height: 100,
@@ -237,11 +257,29 @@ class AssessmentDetailsPage extends StatelessWidget {
                         color: Colors.grey[300],
                       ),
                       child: imageData != null && imageData['url'] != null
-                          ? ClipRRect(
-                              child: Image.network(
-                                imageData['url'].toString(),
-                                fit: BoxFit.cover,
-                              ),
+                          ? Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                ClipRRect(
+                                  child: Image.network(
+                                    imageData['url'].toString(),
+                                    fit: BoxFit.cover,
+                                    width: 100,
+                                    height: 100,
+                                  ),
+                                ),
+                                Positioned.fill(  // Ensure the painter is on top
+                                  child: CustomPaint(
+                                    size: Size(100, 100),
+                                    painter: VectorPainter(
+                                      keypoints,
+                                      segment,
+                                      0, // Adjust if needed
+                                      0, // Adjust if needed
+                                    ),
+                                  ),
+                                ),
+                              ],
                             )
                           : Icon(Icons.image_not_supported),
                     ),
@@ -249,7 +287,6 @@ class AssessmentDetailsPage extends StatelessWidget {
                 ),
                 SizedBox(width: 12),
 
-                // Score Box with Segment Text Below
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerRight,
@@ -269,9 +306,8 @@ class AssessmentDetailsPage extends StatelessWidget {
                         ),
                         SizedBox(height: 4),
 
-                        // Segment Text Below Score Box
                         Text(
-                          segment +' Score',
+                          'Score',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -289,7 +325,9 @@ class AssessmentDetailsPage extends StatelessWidget {
         }).toList(),
       ),
     ],
+    
   );
+  
 }
 
 
@@ -301,32 +339,55 @@ class AssessmentDetailsPage extends StatelessWidget {
         children: labels.map((label) {
           String scoreKey = scoreMapping[label] ?? "";
           String score = data['bodyScores']?[scoreKey]?.toString() ?? "-";
-          print(label);
-          print(data['bodyScores']);
-          print(score);
           return Padding(
             padding: EdgeInsets.symmetric(vertical: 6.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Text(label, style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins',
-                      )),
-                ),
-                SizedBox(width: 12),
-                Container(
-                  width: 60,
-                  padding: EdgeInsets.all(12),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Color.fromRGBO(235, 237, 240, 1),
-                    // borderRadius: BorderRadius.circular(),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Poppins',
                   ),
-                  child: Text(score, style: TextStyle(fontSize: 14, fontFamily:'Poppins', fontWeight: FontWeight.w700)),
                 ),
+              ),
+              SizedBox(width: 12),
+
+              // Wrap the score box and text in a Column
+              Column(
+                children: [
+                  Container(
+                    width: 60,
+                    padding: EdgeInsets.all(12),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Color.fromRGBO(235, 237, 240, 1),
+                    ),
+                    child: Text(
+                      score,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Score',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      fontFamily: 'Poppins',
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+
               ],
             ),
           );
@@ -335,18 +396,143 @@ class AssessmentDetailsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildScoreABox() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 16),
-      child: Center(
-        child: Container(
-          width: 150,
-          height: 80,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(8)),
-          child: Text("Score A", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+Widget _buildScoreABox() {
+  return Padding(
+    padding: EdgeInsets.symmetric(vertical: 16),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 100,
+            height: 60,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Color.fromRGBO(235, 237, 240, 1), 
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              data['rebaScoreA'].toString(),
+              style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+          ),
         ),
+        SizedBox(height: 8), // Space between box and text
+        Center(
+          child: Text(
+            'REBA Score A', 
+            style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+          ),
+        ),
+        SizedBox(height: 8), // Space before the line
+        Divider(thickness: 2, color: Colors.black54), // Full-width line
+      ],
+    ),
+  );
+}
+
+
+
+ Widget _buildScoreBBox() {
+  return Padding(
+    padding: EdgeInsets.symmetric(vertical: 16),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 100,
+            height: 60,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Color.fromRGBO(235, 237, 240, 1), 
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              data['rebaScoreB'].toString(),
+              style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        SizedBox(height: 8), // Space between box and text
+        Center(
+          child: Text(
+            'REBA Score B', 
+            style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+          ),
+        ),
+        SizedBox(height: 8), // Space before the line
+        Divider(thickness: 2, color: Colors.black54), // Full-width line
+      ],
+    ),
+  );
+}
+
+
+ Widget _buildScoreCBox() {
+  return Padding(
+    padding: EdgeInsets.symmetric(vertical: 16),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(
+          child: Container(
+            width: 100,
+            height: 60,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Color.fromRGBO(235, 237, 240, 1), 
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              data['rebaScoreC'].toString(),
+              style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+        SizedBox(height: 8), // Space between box and text
+        Center(
+          child: Text(
+            'REBA Score C', 
+            style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+          ),
+        ),
+        SizedBox(height: 8), // Space before the line
+        Divider(thickness: 2, color: Colors.black54), // Full-width line
+      ],
+    ),
+  );
+}
+
+ Widget _buildScoreBox() {
+  return Padding(
+    padding: EdgeInsets.symmetric(vertical: 16),
+    child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 150,
+            height: 80,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.grey[300], 
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              data['overallScore'].toString(),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+          SizedBox(height: 8), // Space between box and text
+          Text(
+            'Total REBA Score', 
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 }
