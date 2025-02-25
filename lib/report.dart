@@ -102,6 +102,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   late int rebaScoreA;
   late int rebaScoreB;
   late int rebaScoreC;
+  
 
   final Map<String, String> bodyPartToSegment = {
     "neckScore": "Neck",
@@ -110,7 +111,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     "forceLoad": "Force Load Score",
     "upperArmScore": "Upper Arm",
     "lowerArmScore": "Lower Arm",
-    "armSupported": "Arm Supported",
+    "armSupport": "Arm Supported",
     "wristScore": "Wrist",
     "coupling": "Coupling Score",
     "activityScore": "Activity Score",
@@ -141,11 +142,12 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()); // Get current time
     // overallScore = calculateOverallScore(widget.bodyPartScores); // Compute REBA final score
     Map<String, int> rebaScores = calculateOverallScore(widget.bodyPartScores);
-  
+    
     rebaScoreA = rebaScores['rebaScoreA']!;
     rebaScoreB = rebaScores['rebaScoreB']!;
     rebaScoreC = rebaScores['rebaScoreC']!;
     overallScore = rebaScores['totalReba']!;
+    
   }
 
  void _submitAssessment() async {
@@ -257,7 +259,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   "coupling": "Coupling Score",
   "activityScore": "Activity Score",
 };
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -311,7 +313,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
           ...widget.bodyPartScores.entries.map((entry) {
             String bodyPartKey = entry.key;
             int score = entry.value;
-            if (bodyPartKey == "staticPosture" || bodyPartKey == "repeatedAction") return SizedBox();
+            if (bodyPartKey == "staticPosture" || bodyPartKey == "repeatedAction" || bodyPartKey == "armSupport") return SizedBox();
 
             // Get display name, fallback to original key if not found
             String bodyPart = displayBodyPartNames[bodyPartKey] ?? bodyPartKey;
@@ -410,10 +412,18 @@ Center(
               SizedBox(height: 20),
               Center(
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                // padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+              ),
                   onPressed: _submitAssessment,
-                  child: Text("Submit Assessment"),
+                  child: Text("Submit Assessment", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins')),
                 ),
               ),
+              SizedBox(height: 20),
             ],
           ),
         ),

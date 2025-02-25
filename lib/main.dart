@@ -470,7 +470,7 @@ Future<Map<String, int>> fetchAssessmentData(String filter) async {
   // Get the current date and calculate the date range based on the filter
   DateTime now = DateTime.now();
   DateTime startDate;
-  print('ada');
+  
   switch (filter) {
     case "This Week":
       startDate = now.subtract(Duration(days: now.weekday - 1)); // Start of the week
@@ -485,7 +485,7 @@ Future<Map<String, int>> fetchAssessmentData(String filter) async {
       startDate = now;
   }
   final test = await FirebaseFirestore.instance.collection('reba_assessments');
-  print('test: $test');
+  
   // Query assessments from Firestore based on the date range
   final userId = FirebaseAuth.instance.currentUser?.uid;
   QuerySnapshot querySnapshot = await FirebaseFirestore.instance
@@ -493,14 +493,11 @@ Future<Map<String, int>> fetchAssessmentData(String filter) async {
       .where('userId', isEqualTo: userId)
       .where('timestamp', isGreaterThanOrEqualTo: startDate)
       .get();
-  print('query :$querySnapshot');
-  print('start: $startDate');
+ 
 
   // Count the number of assessments and risk results
-  print(querySnapshot.docs);
+
   int totalAssessments = querySnapshot.docs.length;
-  print('total: $totalAssessments');
-  // int riskResults = 100;
   int riskResults = querySnapshot.docs.where((doc) {
       var overallScore = doc['overallScore'];
       // Ensure 'overallScore' is a number and check if it's greater than 1
@@ -520,7 +517,7 @@ Future<Map<String, int>> fetchAssessmentData(String filter) async {
 class _HomeContentState extends State<HomeContent> {
   final userId = FirebaseAuth.instance.currentUser?.uid; // Get the current user ID
   final String? userName = FirebaseAuth.instance.currentUser?.displayName;
-  String selectedFilter = "This Month"; // Default selected option
+  String selectedFilter = "This Week"; // Default selected option
   int totalAssessments = 0;
   int riskResults = 0;
   String searchQuery = "";
@@ -713,12 +710,6 @@ class _HomeContentState extends State<HomeContent> {
     Text("Your Latest Assessment", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Poppins', color: Colors.black)),
     GestureDetector(
       onTap: () {
-        // Navigate to the AssessmentListPage when the arrow is tapped
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => AssessmentListPage()),
-        // );
-        print('ontabindex1');
         widget.onTabChanged(1);
       },
       child: Container(
@@ -743,82 +734,147 @@ class _HomeContentState extends State<HomeContent> {
               // Latest Assessments List
               
 
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('reba_assessments')
-                  .where('userId', isEqualTo: userId) // Filter by the userId field
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+            // StreamBuilder<QuerySnapshot>(
+            //   stream: FirebaseFirestore.instance
+            //       .collection('reba_assessments')
+            //       .where('userId', isEqualTo: userId) // Filter by the userId field
+            //       .snapshots(),
+            //   builder: (context, snapshot) {
+            //     if (snapshot.connectionState == ConnectionState.waiting) {
+            //       return const Center(child: CircularProgressIndicator());
+            //     }
 
-                if (snapshot.hasError) {
-                  return const Center(child: Text("Error fetching data"));
-                }
+            //     if (snapshot.hasError) {
+            //       return const Center(child: Text("Error fetching data"));
+            //     }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(child: Text("No assessments available"));
-                }
+            //     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            //       return const Center(child: Text("No assessments available"));
+            //     }
 
-                var assessments = snapshot.data!.docs;
-                if (searchQuery.isNotEmpty){
-                      assessments = assessments.where((doc) 
-                      {
-                        var data = doc.data() as Map<String, dynamic>;
-                        String title = (data['title'] as String?)?.toLowerCase() ?? "";
-                        return title.contains(searchQuery.toLowerCase());
-                      }).toList();
+            //     var assessments = snapshot.data!.docs;
+            //     if (searchQuery.isNotEmpty){
+            //           assessments = assessments.where((doc) 
+            //           {
+            //             var data = doc.data() as Map<String, dynamic>;
+            //             String title = (data['title'] as String?)?.toLowerCase() ?? "";
+            //             return title.contains(searchQuery.toLowerCase());
+            //           }).toList();
                       
-                      // var assessment = filteredDocs[index].data() as Map<String, dynamic>;
-                    }
+            //           // var assessment = filteredDocs[index].data() as Map<String, dynamic>;
+            //         }
                     
-                if (assessments.isEmpty) {
-                    return const Center(child: 
-                    Text("No Matching Assessment", 
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w300, 
-                    )));
-                  }
+            //     if (assessments.isEmpty) {
+            //         return const Center(child: 
+            //         Text("No Matching Assessment", 
+            //         style: TextStyle(
+            //           fontSize: 14,
+            //           fontFamily: 'Poppins',
+            //           fontWeight: FontWeight.w300, 
+            //         )));
+            //       }
                     
                   
                   
                 
-                return Column(
-                  children: List.generate(assessments.length, (index) {
-                //     if (filteredDocs.isEmpty){
-                //   return Center(child:Text("No Matching Assessment"));
-                    var doc = assessments[index]; // Dapatkan dokumen Firestore
-                    var data = doc.data() as Map<String, dynamic>; 
-                    var assessment = assessments[index].data() as Map<String, dynamic>;
+            //     return Column(
+            //       children: List.generate(assessments.length, (index) {
+            //     //     if (filteredDocs.isEmpty){
+            //     //   return Center(child:Text("No Matching Assessment"));
+            //         var doc = assessments[index]; // Dapatkan dokumen Firestore
+            //         var data = doc.data() as Map<String, dynamic>; 
+            //         var assessment = assessments[index].data() as Map<String, dynamic>;
 
                     
 
-                    // Safely retrieve the title
-                    String assessmentId = doc.id;
+            //         // Safely retrieve the title
+            //         String assessmentId = doc.id;
 
-                    String title = (assessment['title'] ?? 'Unknown').toString();
+            //         String title = (assessment['title'] ?? 'Unknown').toString();
 
-                    // Safely retrieve the timestamp (now as a Timestamp, not String)
-                    Timestamp timestamp = assessment['timestamp'] as Timestamp;
-                    DateTime timestampDate = timestamp.toDate();
+            //         // Safely retrieve the timestamp (now as a Timestamp, not String)
+            //         Timestamp timestamp = assessment['timestamp'] as Timestamp;
+            //         DateTime timestampDate = timestamp.toDate();
 
-                    String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
-                    String imageUrl = (assessment['images'][0]['url'] ?? '').toString();
+            //         String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
+            //         String imageUrl = (assessment['images'][0]['url'] ?? '').toString();
 
-                    return assessmentCard(
-                      context, assessmentId,
-                      title,
-                      formattedDate,
-                      imageUrl,
-                      data, // Convert to string for display or use any DateFormat you want
-                    );
-                  }),
-                );
-              },
-            ),
+            //         return assessmentCard(
+            //           context, assessmentId,
+            //           title,
+            //           formattedDate,
+            //           imageUrl,
+            //           data, // Convert to string for display or use any DateFormat you want
+            //         );
+            //       }),
+            //     );
+            //   },
+            // ),
+
+            StreamBuilder<QuerySnapshot>(
+  stream: FirebaseFirestore.instance
+      .collection('reba_assessments')
+      .where('userId', isEqualTo: userId) // Filter by userId
+      .orderBy('timestamp', descending: true) // Sort by latest
+      .limit(5) // Limit to 5 latest assessments
+      .snapshots(),
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (snapshot.hasError) {
+      return const Center(child: Text("Error fetching data"));
+    }
+
+    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+      return const Center(child: Text("No assessments available"));
+    }
+
+    var assessments = snapshot.data!.docs;
+
+    // Apply search filter if needed
+    if (searchQuery.isNotEmpty) {
+      assessments = assessments.where((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        String title = (data['title'] as String?)?.toLowerCase() ?? "";
+        return title.contains(searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    if (assessments.isEmpty) {
+      return const Center(
+          child: Text("No Matching Assessment",
+              style: TextStyle(
+                fontSize: 14,
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w300,
+              )));
+    }
+
+    return Column(
+      children: List.generate(assessments.length, (index) {
+        var doc = assessments[index];
+        var data = doc.data() as Map<String, dynamic>;
+
+        String assessmentId = doc.id;
+        String title = (data['title'] ?? 'Unknown').toString();
+
+        // Convert Firestore timestamp to DateTime
+        Timestamp timestamp = data['timestamp'] as Timestamp;
+        DateTime timestampDate = timestamp.toDate();
+        String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
+
+        // String imageUrl = (data['images'] != null && data['images'].isNotEmpty)
+        //     ? (data['images'][0]['url'] ?? '').toString()
+        //     : '';
+        String imageUrl = (data['images'][0]['url'] ?? '').toString();
+        return assessmentCard(context, assessmentId, title, formattedDate, imageUrl, data);
+      }),
+    );
+  },
+),
+
               
             ],
           ),
@@ -834,12 +890,6 @@ Widget recapItem(IconData icon, String title, String subtitle, {required Color i
     
     GestureDetector(
       onTap: () {
-        // Explicitly navigate to the same page when pressed
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(builder: (context) => AssessmentListPage()),
-        // );
-        print('ontab');
         widget.onTabChanged(1);
       },
       child: Padding(padding : EdgeInsets.symmetric(vertical: 10, horizontal: 10),
