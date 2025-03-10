@@ -8,6 +8,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 
 
 class AssessmentDetailsPage extends StatelessWidget {
@@ -87,28 +91,54 @@ class AssessmentDetailsPage extends StatelessWidget {
     );
   }
 
-  Future<void> generatePdf(Map<String, dynamic> data) async {
+Future<Uint8List> downloadImage(String imageUrl) async {
+  final response = await http.get(Uri.parse(imageUrl));
+  if (response.statusCode == 200) {
+    return response.bodyBytes;
+  } else {
+    throw Exception("Failed to load image");
+  }
+}
+Future<void> generatePdf(Map<String, dynamic> data) async {
   final pdf = pw.Document();
-
-  // Convert Timestamp to readable date
   DateTime timestampDate = (data['timestamp'] as Timestamp).toDate();
   String formattedDate = "${timestampDate.day}-${timestampDate.month}-${timestampDate.year} ${timestampDate.hour}:${timestampDate.minute}";
-
-  // Risk Level Calculation
+  
   int overallScore = (data['overallScore'] as num?)?.toInt() ?? 0;
   String risk = _getRiskCategory(overallScore);
+  final bodyScores = data['bodyScores'] as Map<String, dynamic>;
+
+  final List<Map<String, dynamic>> images = (data['images'] as List<dynamic>).map((image) {
+    return {
+      'segment': image['segment'].toString(),
+      'url': image['url']?.toString() ?? '',
+      'keypoints': image['keypoints'] ?? [],
+    };
+  }).toList();
+
+  // ✅ **Preload async widgets**
+  final neckTrunkLegTable = await _buildImageScoreTable(images, bodyScores, {
+    "Neck": "neckScore",
+    "Trunk": "trunkScore",
+    "Legs & Posture": "legScore"
+  });
+
+  final armWristTable = await _buildImageScoreTable(images, bodyScores, {
+    "Upper Arm": "upperArmScore",
+    "Lower Arm": "lowerArmScore",
+    "Wrist": "wristScore"
+  });
 
   pdf.addPage(
-    pw.Page(
+    pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
-      build: (pw.Context context) {
-        return pw.Padding(
+      build: (pw.Context context) => [
+        pw.Padding(
           padding: pw.EdgeInsets.all(20),
           child: pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              pw.Text("REBA Analysis Report",
-                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.Text("REBA Analysis Report", style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 10),
               pw.Text("Title: ${data['title']}", style: pw.TextStyle(fontSize: 14)),
               pw.Text("Description: ${data['description']}", style: pw.TextStyle(fontSize: 14)),
@@ -117,43 +147,153 @@ class AssessmentDetailsPage extends StatelessWidget {
               pw.Text("Overall REBA Score: $overallScore", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
               pw.Text("Risk Level: $risk", style: pw.TextStyle(fontSize: 14, color: PdfColors.red)),
               pw.SizedBox(height: 15),
+              
+              _buildSection("Neck, Trunk, and Leg Analysis"),
+              neckTrunkLegTable, // ✅ **Use preloaded table here**
+              _buildScoreRow("Force Load Score", (bodyScores["forceLoad"] as num?)?.toInt()),
 
-              pw.Text("Detailed Scores", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-              pw.Table(
-                border: pw.TableBorder.all(),
-                columnWidths: {
-                  0: pw.FlexColumnWidth(1),
-                  1: pw.FlexColumnWidth(1),
-                },
-                children: [
-                  pw.TableRow(
-                    decoration: pw.BoxDecoration(color: PdfColors.grey200),
-                    children: [
-                      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Body Part", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                    ],
-                  ),
-                  ..._buildScoreRows(data)
-                ],
-              ),
+              _buildCenteredScore("REBA Score A", (data['rebaScoreA'] as num?)?.toInt()),
+
+              _buildSection("Arm & Wrist Analysis"),
+              armWristTable, // ✅ **Use preloaded table here**
+              _buildScoreRow("Coupling Score", (bodyScores["coupling"] as num?)?.toInt()),
+
+              _buildCenteredScore("REBA Score B", (data['rebaScoreB'] as num?)?.toInt()),
+
+              _buildSection("Activity Score"),
+              _buildScoreRow("Activity Score", (bodyScores["activityScore"] as num?)?.toInt()),
+
+              _buildCenteredScore("REBA Score C", (data['rebaScoreC'] as num?)?.toInt()),
+
+              _buildCenteredScore("Total REBA Score", overallScore, emphasized: true),
+              
               pw.SizedBox(height: 20),
               pw.Text("End of Report", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
             ],
           ),
-        );
-      },
+        ),
+      ],
     ),
   );
 
-  // Save PDF File
   final output = await getExternalStorageDirectory();
   final file = File("${output!.path}/REBA_Report.pdf");
   await file.writeAsBytes(await pdf.save());
-
-  // Share or Open PDF
   await Share.shareXFiles([XFile(file.path)], text: "Download your REBA Report");
-
 }
+
+
+pw.Widget _buildSection(String title) {
+  return pw.Padding(
+    padding: pw.EdgeInsets.symmetric(vertical: 10),
+    child: pw.Text(
+      title,
+      style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue),
+    ),
+  );
+}
+
+Future<pw.Widget> _buildImageScoreTable(List<Map<String, dynamic>> images, Map<String, dynamic> scores, Map<String, String> segmentMapping) async {
+  return pw.Table(
+    border: pw.TableBorder.all(),
+    columnWidths: {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(1)},
+    children: [
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.grey200),
+        children: [
+          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Segment", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+        ],
+      ),
+      for (var entry in segmentMapping.entries)
+        pw.TableRow(children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Column(
+              children: [
+                pw.Text(entry.key),
+                if (images.any((img) => img['segment'] == entry.key))
+                  await _drawKeypointsOnImage(images.firstWhere((img) => img['segment'] == entry.key)),
+              ],
+            ),
+          ),
+          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text((scores[entry.value] as num?)?.toInt()?.toString() ?? "-")),
+        ]),
+    ],
+  );
+}
+
+Future<pw.Widget> _drawKeypointsOnImage(Map<String, dynamic> imageData) async {
+  Uint8List imageBytes = await downloadImage(imageData['url'].toString());
+List<Map<String, dynamic>> keypoints = 
+    (imageData['keypoints'] as List<dynamic>)
+        .map((point) => (point as Map<dynamic, dynamic>).map(
+              (key, value) => MapEntry(key.toString(), value),
+            ))
+        .toList();
+  return pw.Container(
+    width: 100,
+    height: 100,
+    child: pw.Stack(
+      children: [
+        pw.Image(pw.MemoryImage(imageBytes), width: 100, height: 100, fit: pw.BoxFit.cover),
+        for (var point in keypoints)
+          pw.Positioned(
+            left: (point['x'] as num).toDouble() * 100,
+            top: (point['y'] as num).toDouble() * 100,
+            child: pw.SizedBox(
+  width: 4,
+  height: 4,
+  child: pw.Container(
+    decoration: pw.BoxDecoration(
+      color: PdfColors.red,
+      shape: pw.BoxShape.circle,
+    ),
+  ),
+),
+          ),
+      ],
+    ),
+  );
+}
+
+
+
+
+pw.Widget _buildScoreRow(String title, int? score) {
+  return pw.Table(
+    border: pw.TableBorder.all(),
+    children: [
+      pw.TableRow(
+        children: [
+          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(title)),
+          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(score != null ? score.toString() : "-")),
+        ],
+      ),
+    ],
+  );
+}
+
+pw.Widget _buildCenteredScore(String title, int? score, {bool emphasized = false}) {
+  return pw.Table(
+    border: pw.TableBorder.all(),
+    children: [
+      pw.TableRow(
+        children: [
+          pw.Container(
+            alignment: pw.Alignment.center,
+            padding: pw.EdgeInsets.all(10),
+            child: pw.Text(
+              "$title: ${score ?? '-'}",
+              style: pw.TextStyle(fontSize: emphasized ? 18 : 14, fontWeight: emphasized ? pw.FontWeight.bold : pw.FontWeight.normal),
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+// Function to download and convert an image from Supabase URL to bytes
 
 // Helper function to determine risk category
 String _getRiskCategory(int score) {
@@ -165,18 +305,6 @@ String _getRiskCategory(int score) {
 }
 
 // Helper function to build score rows
-List<pw.TableRow> _buildScoreRows(Map<String, dynamic> data) {
-  List<String> bodyParts = ["Neck", "Trunk", "Legs", "Upper Arm", "Lower Arm", "Wrist"];
-  List<pw.TableRow> rows = [];
-  for (String part in bodyParts) {
-    rows.add(pw.TableRow(children: [
-      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(part)),
-      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(data['${part.toLowerCase()}Score']?.toString() ?? '-')),
-    ]));
-  }
-  return rows;
-}
-
   final Map<String, String> scoreMapping = {
     "Neck": "neckScore",
     "Trunk": "trunkScore",
@@ -190,14 +318,20 @@ List<pw.TableRow> _buildScoreRows(Map<String, dynamic> data) {
     "Activity Score": "activityScore",
   };
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // extendBodyBehindAppBar: false,
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.white,
+    appBar: AppBar(
+      elevation: 0,
       backgroundColor: Colors.white,
-      appBar: AppBar(elevation:0, backgroundColor:Colors.white, title: Text("Assessment Report", style:TextStyle(fontFamily: 'Poppins', fontSize:20, fontWeight: FontWeight.w600))),
-      body: SafeArea(
-      child:SingleChildScrollView(
+      title: Text(
+        "Assessment Report",
+        style: TextStyle(fontFamily: 'Poppins', fontSize: 20, fontWeight: FontWeight.w600),
+      ),
+    ),
+    body: SafeArea(
+      child: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,24 +348,39 @@ List<pw.TableRow> _buildScoreRows(Map<String, dynamic> data) {
             _buildOtherScores(["Activity Score"], data),
             _buildScoreCBox(),
             _buildScoreBox(),
-             SizedBox(height: 20),
-             Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                  ),
-                  onPressed: () => generatePdf(data),
-                  child: Text("Delete Assessment", style: TextStyle(fontSize: 16, color: Colors.white)),
-                ),
-              ),
+            SizedBox(height: 20),
 
+            // 🆕 Download PDF Button
+            Center(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue, // Blue for download action
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                ),
+                onPressed: () => generatePdf(data),
+                child: Text("Download PDF", style: TextStyle(fontSize: 16, color: Colors.white)),
+              ),
+            ),
+            SizedBox(height: 10),
+
+            // ❌ Delete Button (Fixed)
+            Center(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                ),
+                onPressed: () => _confirmDelete(context),
+                child: Text("Delete Assessment", style: TextStyle(fontSize: 16, color: Colors.white)),
+              ),
+            ),
           ],
         ),
       ),
-    )
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildHeader() {
     Timestamp timestamp = data['timestamp'] as Timestamp;
@@ -310,17 +459,17 @@ List<pw.TableRow> _buildScoreRows(Map<String, dynamic> data) {
           print('Segment: ${imageData?['segment']}');
           print('Keypoints: ${imageData?['keypoints']}');
 
-         List<Keypoint> keypoints = [];
-          if (imageData != null && imageData is Map<String, dynamic> &&
-              imageData.containsKey('keypoints') && imageData['keypoints'] is List) {
-            keypoints = (imageData['keypoints'] as List)
-                .map((point) => Keypoint(
-                      (point['x'] as num).toDouble(), 
-                      (point['y'] as num).toDouble(), 
-                      0.1 // Default confidence value (adjust if needed)
-                    ))
-                .toList();
-          }
+        List<Keypoint> keypoints = [];
+if (imageData != null && imageData is Map<String, dynamic> &&
+    imageData.containsKey('keypoints') && imageData['keypoints'] is List<dynamic>) {
+  keypoints = (imageData['keypoints'] as List<dynamic>)
+      .map((point) => Keypoint(
+            (point['x'] as num).toDouble(), 
+            (point['y'] as num).toDouble(), 
+            0.1 // Default confidence value
+          ))
+      .toList();
+}
 
           String scoreKey = scoreMapping[segment] ?? "";
           String score = data['bodyScores']?[scoreKey]?.toString() ?? "-";

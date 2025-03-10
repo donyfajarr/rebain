@@ -661,7 +661,7 @@ class _HomeContentState extends State<HomeContent> {
                   });
                 }
               },
-              items: ["This Month", "This Week", "This Year"]
+              items: ["This Week", "This Month", "This Year"]
                   .map<DropdownMenuItem<String>>((String value) {
                 return DropdownMenuItem<String>(
                   value: value,

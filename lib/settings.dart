@@ -14,9 +14,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Settings', style: TextStyle(color: Colors.black)),
+        title: Text('Settings', style:TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 20)), centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
@@ -25,18 +25,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Column(
           children: [
+            
             SettingsTile(
-              icon: Icons.folder,
-              title: "Storage Location",
-              onTap: () => _handleTap("Storage Location"),
-            ),
-            SettingsTile(
-              icon: Icons.favorite,
+              icon: Icons.import_export_rounded,
               title: "Export All Data",
               onTap: () => _handleTap("Export All Data"),
             ),
             SettingsTile(
-              icon: Icons.delete,
+              icon: Icons.delete_rounded,
               title: "Delete All Data",
               textColor: Colors.red,
               iconColor: Colors.red,
@@ -73,10 +69,10 @@ class SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ListTile(
         leading: Icon(icon, color: iconColor),
-        title: Text(title, style: TextStyle(color: textColor)),
+        title: Text(title, style:TextStyle(color:textColor, fontFamily: 'Poppins', fontSize:14, fontWeight: FontWeight.w600)),
         trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         onTap: onTap,
       ),
