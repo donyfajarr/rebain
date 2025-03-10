@@ -14,6 +14,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'list.dart';
 import 'details.dart';
 import 'profil.dart';
+import 'settings.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -342,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }),
       AssessmentListPage(), // ✅ Halaman Assessment List
       ImagePickerScreen(), // QR Scanner (Nanti diganti)
-      Placeholder(), // Settings Page
+      SettingsScreen(), // Settings Page
       ProfilePage(), // Profile Page
     ];
   }

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'list.dart';
 import 'package:intl/intl.dart';
 import 'input.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
+
 
 class AssessmentDetailsPage extends StatelessWidget {
   final String assessmentId;
@@ -82,7 +87,96 @@ class AssessmentDetailsPage extends StatelessWidget {
     );
   }
 
-  
+  Future<void> generatePdf(Map<String, dynamic> data) async {
+  final pdf = pw.Document();
+
+  // Convert Timestamp to readable date
+  DateTime timestampDate = (data['timestamp'] as Timestamp).toDate();
+  String formattedDate = "${timestampDate.day}-${timestampDate.month}-${timestampDate.year} ${timestampDate.hour}:${timestampDate.minute}";
+
+  // Risk Level Calculation
+  int overallScore = (data['overallScore'] as num?)?.toInt() ?? 0;
+  String risk = _getRiskCategory(overallScore);
+
+  pdf.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (pw.Context context) {
+        return pw.Padding(
+          padding: pw.EdgeInsets.all(20),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text("REBA Analysis Report",
+                  style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 10),
+              pw.Text("Title: ${data['title']}", style: pw.TextStyle(fontSize: 14)),
+              pw.Text("Description: ${data['description']}", style: pw.TextStyle(fontSize: 14)),
+              pw.Text("Date: $formattedDate", style: pw.TextStyle(fontSize: 14)),
+              pw.SizedBox(height: 10),
+              pw.Text("Overall REBA Score: $overallScore", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Text("Risk Level: $risk", style: pw.TextStyle(fontSize: 14, color: PdfColors.red)),
+              pw.SizedBox(height: 15),
+
+              pw.Text("Detailed Scores", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+              pw.Table(
+                border: pw.TableBorder.all(),
+                columnWidths: {
+                  0: pw.FlexColumnWidth(1),
+                  1: pw.FlexColumnWidth(1),
+                },
+                children: [
+                  pw.TableRow(
+                    decoration: pw.BoxDecoration(color: PdfColors.grey200),
+                    children: [
+                      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Body Part", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                    ],
+                  ),
+                  ..._buildScoreRows(data)
+                ],
+              ),
+              pw.SizedBox(height: 20),
+              pw.Text("End of Report", style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+
+  // Save PDF File
+  final output = await getExternalStorageDirectory();
+  final file = File("${output!.path}/REBA_Report.pdf");
+  await file.writeAsBytes(await pdf.save());
+
+  // Share or Open PDF
+  await Share.shareXFiles([XFile(file.path)], text: "Download your REBA Report");
+
+}
+
+// Helper function to determine risk category
+String _getRiskCategory(int score) {
+  if (score == 1) return 'Negligible Risk';
+  if (score >= 2 && score <= 3) return 'Low Risk. Change may be needed';
+  if (score >= 4 && score <= 7) return 'Medium Risk. Investigate further.';
+  if (score >= 8 && score <= 10) return 'High Risk. Immediate change required.';
+  return 'Very High Risk. Urgent Action!';
+}
+
+// Helper function to build score rows
+List<pw.TableRow> _buildScoreRows(Map<String, dynamic> data) {
+  List<String> bodyParts = ["Neck", "Trunk", "Legs", "Upper Arm", "Lower Arm", "Wrist"];
+  List<pw.TableRow> rows = [];
+  for (String part in bodyParts) {
+    rows.add(pw.TableRow(children: [
+      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(part)),
+      pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text(data['${part.toLowerCase()}Score']?.toString() ?? '-')),
+    ]));
+  }
+  return rows;
+}
+
   final Map<String, String> scoreMapping = {
     "Neck": "neckScore",
     "Trunk": "trunkScore",
@@ -127,7 +221,7 @@ class AssessmentDetailsPage extends StatelessWidget {
                     backgroundColor: Colors.red,
                     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
                   ),
-                  onPressed: () => _confirmDelete(context),
+                  onPressed: () => generatePdf(data),
                   child: Text("Delete Assessment", style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
               ),
