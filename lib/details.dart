@@ -11,6 +11,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'settings.dart';
+export 'details.dart';
 
 
 
@@ -101,6 +103,7 @@ Future<Uint8List> downloadImage(String imageUrl) async {
 }
 Future<void> generatePdf(Map<String, dynamic> data) async {
   final pdf = pw.Document();
+  print('test data : $data');
   DateTime timestampDate = (data['timestamp'] as Timestamp).toDate();
   String formattedDate = "${timestampDate.day}-${timestampDate.month}-${timestampDate.year} ${timestampDate.hour}:${timestampDate.minute}";
   
