@@ -10,8 +10,6 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
-import 'dart:ui' as ui;
-import 'settings.dart';
 export 'details.dart';
 
 
@@ -49,15 +47,10 @@ class AssessmentDetailsPage extends StatelessWidget {
     try {
       // Get images to delete from Supabase before removing Firestore entry
       List<dynamic> images = (data['images'] as List<dynamic>?) ?? [];
-
-      // Delete images from Supabase
       await _deleteImagesFromSupabase(images);
-
-      // Delete the assessment from Firestore
       await FirebaseFirestore.instance.collection('reba_assessments').doc(assessmentId).delete();
 
       print("✅ Deleted assessment successfully");
-
       // Navigate back after deletion
       Navigator.pop(context);
     } catch (e) {
@@ -296,7 +289,6 @@ pw.Widget _buildCenteredScore(String title, int? score, {bool emphasized = false
     ],
   );
 }
-// Function to download and convert an image from Supabase URL to bytes
 
 // Helper function to determine risk category
 String _getRiskCategory(int score) {
@@ -462,17 +454,17 @@ Widget build(BuildContext context) {
           print('Segment: ${imageData?['segment']}');
           print('Keypoints: ${imageData?['keypoints']}');
 
-        List<Keypoint> keypoints = [];
-if (imageData != null && imageData is Map<String, dynamic> &&
-    imageData.containsKey('keypoints') && imageData['keypoints'] is List<dynamic>) {
-  keypoints = (imageData['keypoints'] as List<dynamic>)
-      .map((point) => Keypoint(
-            (point['x'] as num).toDouble(), 
-            (point['y'] as num).toDouble(), 
-            0.1 // Default confidence value
-          ))
-      .toList();
-}
+          List<Keypoint> keypoints = [];
+          if (imageData != null && imageData is Map<String, dynamic> &&
+              imageData.containsKey('keypoints') && imageData['keypoints'] is List<dynamic>) {
+            keypoints = (imageData['keypoints'] as List<dynamic>)
+                .map((point) => Keypoint(
+                      (point['x'] as num).toDouble(), 
+                      (point['y'] as num).toDouble(), 
+                      0.1 // Default confidence value
+                    ))
+                .toList();
+          }
 
           String scoreKey = scoreMapping[segment] ?? "";
           String score = data['bodyScores']?[scoreKey]?.toString() ?? "-";
@@ -494,8 +486,6 @@ if (imageData != null && imageData is Map<String, dynamic> &&
                       ),
                     ),
                     SizedBox(height: 4),
-
-                    // Image with keypoints overlay
                     Container(
                       width: 100,
                       height: 100,
@@ -532,7 +522,6 @@ if (imageData != null && imageData is Map<String, dynamic> &&
                   ],
                 ),
                 SizedBox(width: 12),
-
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerRight,
@@ -573,7 +562,7 @@ if (imageData != null && imageData is Map<String, dynamic> &&
     ],
     
   );
-  
+
 }
 
 
@@ -633,7 +622,6 @@ if (imageData != null && imageData is Map<String, dynamic> &&
                   ),
                 ],
               ),
-
               ],
             ),
           );

@@ -4,106 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'details.dart';
 import 'package:intl/intl.dart';
 
-// ⬇️ Stateful Widget untuk Home dengan Bottom Navigation Bar
-// class HomeScreen extends StatefulWidget {
-//   @override
-//   _HomeScreenState createState() => _HomeScreenState();
-// }
-
-// class _HomeScreenState extends State<HomeScreen> {
-//   int _currentIndex = 1; // ⬅️ Default ke "Assessment"
-
-//   final List<Widget> _pages = [
-//     Placeholder(), // Home Page (Nanti bisa diganti)
-//     AssessmentListPage(), // ✅ Page untuk Assessment List
-//     Placeholder(), // QR Scanner (Placeholder)
-//     Placeholder(), // Settings Page
-//     Placeholder(), // Profile Page
-//   ];
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       body: _pages[_currentIndex],
-
-//       // ✅ Bottom Navigation Bar dengan latar belakang putih
-//       bottomNavigationBar: Stack(
-//         alignment: Alignment.bottomCenter,
-//         children: [
-//           // ✅ Bottom Nav Background
-//           Container(
-//             height: 60,
-//             margin: EdgeInsets.only(bottom: 10),
-//             decoration: BoxDecoration(
-//               color: Colors.white,
-//               borderRadius: BorderRadius.circular(20),
-//               boxShadow: [
-//                 BoxShadow(
-//                   color: Colors.black12,
-//                   blurRadius: 8,
-//                   spreadRadius: 1,
-//                   offset: Offset(0, 3),
-//                 ),
-//               ],
-//             ),
-//             child: Row(
-//               mainAxisAlignment: MainAxisAlignment.spaceAround,
-//               children: [
-//                 buildNavItem(Icons.home_rounded, "Home", 0),
-//                 buildNavItem(Icons.assignment, "Assess", 1),
-//                 SizedBox(width: 60), // Ruang untuk QR Button
-//                 buildNavItem(Icons.settings, "Settings", 3),
-//                 buildNavItem(Icons.person, "Profile", 4),
-//               ],
-//             ),
-//           ),
-
-//           // ✅ QR Code Floating Button di tengah
-//           Positioned(
-//             bottom: 20,
-//             child: GestureDetector(
-//               onTap: () {
-//                 Navigator.push(context, MaterialPageRoute(builder: (context) => Placeholder()));
-//               },
-//               child: Container(
-//                 width: 65,
-//                 height: 65,
-//                 decoration: BoxDecoration(
-//                   color: Color.fromRGBO(55, 149, 112, 1),
-//                   shape: BoxShape.circle,
-//                   boxShadow: [
-//                     BoxShadow(color: Colors.black26, blurRadius: 6, spreadRadius: 1, offset: Offset(0, 3)),
-//                   ],
-//                 ),
-//                 child: Center(child: Icon(Icons.qr_code_scanner, color: Colors.white, size: 30)),
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   // ✅ Function untuk membuat Navigation Item
-//   Widget buildNavItem(IconData icon, String label, int index) {
-//     return GestureDetector(
-//       onTap: () {
-//         if (index != 2) setState(() => _currentIndex = index);
-//       },
-//       child: Column(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           Icon(icon, color: _currentIndex == index ? Colors.black : Colors.grey, size: 22),
-//           SizedBox(height: 2),
-//           Text(label, style: TextStyle(fontSize: 10, fontWeight: _currentIndex == index ? FontWeight.w600 : FontWeight.w400, color: _currentIndex == index ? Colors.black : Colors.grey)),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-// ⬇️ UI LIST SESUAI GAMBAR
 class AssessmentListPage extends StatefulWidget {
   @override
   _AssessmentListPageState createState() => _AssessmentListPageState();
@@ -114,8 +14,6 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
   String selectedFilter = "All"; // Default filter
   bool isLatest = true; // Sorting toggle
   String searchQuery = ""; // Search input
-
-  
 
   @override
   Widget build(BuildContext context) {

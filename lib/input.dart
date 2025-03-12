@@ -18,8 +18,6 @@ class Keypoint {
 
   Keypoint(this.x, this.y, this.confidence);
 
-  
-
 }
 
 class Handkeypoint {
@@ -75,9 +73,6 @@ class HandKeypointsPainter extends CustomPainter {
       if (keypoint.confidence != 0) {
         print(keypoint.x);
         final dx = (keypoint.x  * size.width);
-        
-        // print(size.width);
-        // print(dx);
         final dy = (keypoint.y  * size.height);
       
         print('Keypoints X 224 : $dx - Keypoints Y 224 : $dy');
@@ -113,14 +108,6 @@ class HandKeypointsPainter extends CustomPainter {
   }
 }
 
-// class VectorPainter extends CustomPainter {
-//  final List<Keypoint> keypoints;
-//  final List<int> relevantkeypoints;
-//  final double paddingX;
-//  final double paddingY;
-// }
-
-
 class VectorPainter extends CustomPainter {
   final List<Keypoint> keypoints;
   final String segmentName;
@@ -143,8 +130,7 @@ class VectorPainter extends CustomPainter {
     );
 
     // 🔹 Get the keypoints & connections for the selected segment
-    // final List<int> relevantKeypoints = segmentKeypoints[segmentName] ?? [];
-    // final List<List<int>> relevantConnections = segmentConnections[segmentName] ?? [];
+
     List<Vector2D> vectors = keypoints.map((kp) => Vector2D(kp.x, kp.y)).toList();
     if (vectors.length <17) return;
 
@@ -165,7 +151,6 @@ class VectorPainter extends CustomPainter {
         midHip = _calculateMidpoint(keypoints, 11, 12, size);
         midKnee = _calculateMidpoint(keypoints, 13, 14, size);
         connections = [[-1, -2], [-2, -3]];
-        // print('ada');
         break;
 
       case "legs & posture":
@@ -174,7 +159,6 @@ class VectorPainter extends CustomPainter {
           [11, 13], [13, 15], // Left leg
           [12, 14], [14, 16] // Right leg
         ];
-        // print('ada juga');
         break;
 
       case "upper arm":
@@ -235,7 +219,6 @@ class VectorPainter extends CustomPainter {
 
     }
    
-    // Draw lines (vectors) between connected keypoints
     // Draw individual keypoints
     for (var index in relevantKeypoints) {
       final keypoint = keypoints[index];
@@ -245,7 +228,6 @@ class VectorPainter extends CustomPainter {
         canvas.drawCircle(Offset(dx, dy), 4.0, paintKeypoints);
         
       }
-      // print(keypoint);
     }
 
     // Draw midpoints
@@ -283,9 +265,6 @@ class VectorPainter extends CustomPainter {
     double y = (keypoints[kp1].y + keypoints[kp2].y) / 2;
     return Offset(x * size.width, y * size.height);
   }
-
-  /// Handles drawing the wrist with hand keypoints
-
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
@@ -533,9 +512,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     "Activity Score",
   ];
 
-int _currentStep = 0; 
-
-
+  int _currentStep = 0; 
 
   @override
   void initState() {
@@ -559,7 +536,6 @@ int _currentStep = 0;
     } catch (e) {
       print("Error initializing model: $e");
     }
-
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -581,9 +557,7 @@ int _currentStep = 0;
 
   Future<void> _predict(File image, String segment) async {
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
-
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
-    
     List<Handkeypoint> handkeypoints = [];
     print('Segment $segment');
   if (segment.toLowerCase() == "wrist") {
@@ -663,38 +637,6 @@ int _currentStep = 0;
   segmentScores["neckScore"] = neckScore;
   print('Total Neck Score: $neckScore');
 }
-  // if (segment.toLowerCase() == "neck"){
-  // int neckScore = 0;
-
-  // double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
-  // print('Neck Angle: $neckAngle°');
-
-  // if (neckAngle >=10 && neckAngle < 20){
-  //   neckScore +=1;
-  // } else if (neckAngle > 20){
-  //   neckScore +=2;
-  // } else if (neckAngle <=0){
-  //   neckScore +=2;
-  // }
-  // // 1.1 If Neck is twisted (+1 jika 5-infinite)
-  // double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftEye, rightEye);
-  // print('Neck Twisted : $neckTwisted');
-  // if (neckTwisted >=5){
-  //   neckScore +=1;
-  // }
-
-  // // 1.2 If Neck is side bending (+1 jika 5-infinite)
-  // var (neckbendingleft, neckbendingright) = PostureCalculator.calculateNeckBending(leftEar, midShoulder, leftShoulder, rightEar, rightShoulder);
-  // print('Neck Bending Left: $neckbendingleft');
-  // print('Neck Bending Right: $neckbendingright');
-
-  // if (neckbendingleft>=5 || neckbendingright>=5){
-  //   neckScore +=1;
-  // }
-  //   // Calculate Total Neck Score
-  // segmentScores["neckScore"] = neckScore;
-  // print('Total Neck Score: $neckScore');
-  // }
 
   // 2. Locate Trunk Position (+1 jika 0, +2 jika -infinite - 0, +2 jika 0 - 20, +3 jika 20 - 60, +4 jika 60 - infinite)
   if (segment.toLowerCase() == "trunk") {
@@ -740,43 +682,7 @@ int _currentStep = 0;
   segmentScores["trunkScore"] = trunkScore;
   print('Total Trunk Score: $trunkScore');
 }
-  // if (segment.toLowerCase() == "trunk"){
-  // int trunkScore = 0;
-
-  // double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
-  // print('Trunk Flexion Angle: $trunkFlexion');
-  // if (trunkFlexion == 0){
-  //   trunkScore +=1;
-  // } else if (trunkFlexion <0){
-  //   trunkScore +=2;
-  // } else if (trunkFlexion >0 && trunkFlexion <=20){
-  //   trunkScore +=2;
-  // } else if (trunkFlexion >20 && trunkFlexion<=60){
-  //   trunkScore +=3;
-  // } else if (trunkFlexion >60){
-  //   trunkScore +=4;
-  // }
-
-  // // 2.1 If trunk is twisted (+1 jika 100 - infinite)
-  // double trunkTwisting = PostureCalculator.calculateTrunkTwisting(rightShoulder, midHip, rightHip, leftShoulder, leftHip);
-  // print('Trunk Twisting Angle: $trunkTwisting');
-
-  // if (trunkTwisting >=100){
-  //   trunkScore +=1;
-  // }
-
-  // // 2.2 If trunk is bending (+1 jika -infinite - 85, +1 jika 95 - infinite)
-  // var (leftbending, rightbending) = PostureCalculator.calculateTrunkBending(rightHip, midHip, midShoulder, leftHip);
-  // print('Trunk Bending Left Angle: $leftbending');
-  // print('Trunk Bending Right Angle: $rightbending');
-  // if (leftbending <=85 || leftbending >=95 || rightbending <=85 || rightbending >=95){
-  //   trunkScore +=1;
-  // }
-
-  // // Calculate Total Trunk Score
-  // segmentScores["trunkScore"] = trunkScore;
-  // print('Total Trunk Score: $trunkScore');
-  // }
+ 
   
   // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
 
@@ -859,10 +765,6 @@ int _currentStep = 0;
   print('Total Upper Arm Score: $upperArmScore');
 
   // 7.3 If arm is supported or person is leaning +1
-
-  // input
-
-  
 
   // Calculate Total Upper Arm Score
   }

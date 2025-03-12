@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:merula/main.dart';
 import 'input.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:image/image.dart' as image_lib;
 import 'package:intl/intl.dart';
 import 'create.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

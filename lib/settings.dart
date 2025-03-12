@@ -3,10 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pdf/pdf.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
@@ -316,7 +314,6 @@ Future<List<Map<String, dynamic>>> fetchFilteredData(DateTime start, DateTime en
 // ✅ Generate PDFs for all assessments in the background
 
 Future<void> generateAllPdfs(BuildContext context, DateTime? start, DateTime? end) async {
-   List<Map<String, dynamic>> filteredData;
 
   // Step 1️⃣: Request storage permission
   var status = await Permission.storage.request();
@@ -349,7 +346,6 @@ Future<void> generateAllPdfs(BuildContext context, DateTime? start, DateTime? en
 
   if (start != null && end != null) {
     // ✅ Fetch data within the date range
-    // filteredData = await fetchFilteredData(start, end);
     List<Map<String, dynamic>> filteredData = await fetchFilteredData(start, end);
      if (filteredData.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

@@ -1,10 +1,12 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'report.dart';
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
-Future<String?> uploadImageToSupabase(File imageFile, String userId, String assessmentId, String segmentKey) async {
+Future<String?> uploadImageToSupabase(
+  File imageFile, 
+  String userId, 
+  String assessmentId, 
+  String segmentKey,) async {
   final supabase = Supabase.instance.client;
 
   try {
