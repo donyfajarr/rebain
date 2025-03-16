@@ -1472,6 +1472,10 @@ else if (currentSegment.toLowerCase() == "activity score") ...[
     ),
   ],
 ),
-],],),),);
+],
+],
+),
+),
+);
 }
 }
