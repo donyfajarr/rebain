@@ -136,13 +136,14 @@ class VectorPainter extends CustomPainter {
 
     List<List<int>> connections = [];
     List<int> relevantKeypoints = [];
-    Offset? midShoulder, midHip, midKnee;
+    Offset? midShoulder, midHip, midKnee, midEar;
      switch (segmentName.toLowerCase()) {
       case "neck":
-        relevantKeypoints = [0, 5, 6, 11, 12];
+        relevantKeypoints = [3,4, 5, 6, 11, 12];
+        midEar = _calculateMidpoint(keypoints, 3, 4, size);
         midShoulder = _calculateMidpoint(keypoints, 5, 6, size);
         midHip = _calculateMidpoint(keypoints, 11, 12, size);
-        connections = [[0, -1], [-1, -2]];
+        connections = [[-4, -1], [-1, -2]];
         break;
 
       case "trunk":
@@ -222,7 +223,7 @@ class VectorPainter extends CustomPainter {
     // Draw individual keypoints
     for (var index in relevantKeypoints) {
       final keypoint = keypoints[index];
-      if (keypoint.confidence > 0.1) {
+      if (keypoint.confidence > 0) {
         final dx = keypoint.x * size.width;
         final dy = keypoint.y * size.height;
         canvas.drawCircle(Offset(dx, dy), 4.0, paintKeypoints);
@@ -234,6 +235,7 @@ class VectorPainter extends CustomPainter {
     if (midShoulder != null) canvas.drawCircle(midShoulder!, 4.0, paintKeypoints);
     if (midHip != null) canvas.drawCircle(midHip!, 4.0, paintKeypoints);
     if (midKnee != null) canvas.drawCircle(midKnee!, 4.0, paintKeypoints);
+    if (midEar != null) canvas.drawCircle(midEar!,4.0, paintKeypoints);
     // Draw connections
     for (var pair in connections) {
       Offset? p1, p2;
@@ -241,6 +243,7 @@ class VectorPainter extends CustomPainter {
       if (pair[0] == -1) p1 = midShoulder;
       else if (pair[0] == -2) p1 = midHip;
       else if (pair[0] == -3) p1 = midKnee;
+      else if (pair[0] == -4) p1 = midEar;
       else p1 = keypoints[pair[0]].confidence > 0
           ? Offset(keypoints[pair[0]].x * size.width, keypoints[pair[0]].y * size.height)
           : null;
@@ -248,6 +251,7 @@ class VectorPainter extends CustomPainter {
       if (pair[1] == -1) p2 = midShoulder;
       else if (pair[1] == -2) p2 = midHip;
       else if (pair[1] == -3) p2 = midKnee;
+      else if (pair[1] == -4) p2 = midEar;
       else p2 = keypoints[pair[1]].confidence > 0
           ? Offset(keypoints[pair[1]].x * size.width, keypoints[pair[1]].y * size.height)
           : null;
@@ -260,7 +264,7 @@ class VectorPainter extends CustomPainter {
 
   /// Calculates the midpoint between two keypoints
   Offset? _calculateMidpoint(List<Keypoint> keypoints, int kp1, int kp2, Size size) {
-    if (keypoints[kp1].confidence < 0.1 || keypoints[kp2].confidence < 0.1) return null;
+    if (keypoints[kp1].confidence < 0 || keypoints[kp2].confidence < 0) return null;
     double x = (keypoints[kp1].x + keypoints[kp2].x) / 2;
     double y = (keypoints[kp1].y + keypoints[kp2].y) / 2;
     return Offset(x * size.width, y * size.height);
@@ -311,7 +315,7 @@ class KeypointsPainter extends CustomPainter {
 
     for (var i = 0; i < keypoints.length; i++) {
       final keypoint = keypoints[i];
-      if (keypoint.confidence > 0.1) {
+      if (keypoint.confidence > 0) {
         
         final dx = keypoint.x * size.width;
         final dy = keypoint.y * size.height;
@@ -384,7 +388,7 @@ class Vector2D {
   }
 
   Vector2D? getKeypoint(List<Keypoint> keypoints, int index) {
-  if (index >= 0 && index < keypoints.length && keypoints[index].confidence > 0.1) {
+  if (index >= 0 && index < keypoints.length && keypoints[index].confidence > 0) {
     return Vector2D(keypoints[index].x, keypoints[index].y);
   }
   return null; // Return null if confidence is too low or index is invalid
@@ -442,9 +446,9 @@ class PostureCalculator {
 
     return (status, shoulderdiff);
   }
-  static double calculateNeckAngle(Vector2D nose, Vector2D midShoulder, Vector2D midHip) {
+  static double calculateNeckAngle(Vector2D midEar, Vector2D midShoulder, Vector2D midHip) {
 
-    return calculateAngle(nose, midShoulder, midHip);
+    return calculateAngle(midEar, midShoulder, midHip);
   }
   static double calculateNeckTwisted(Vector2D nose, Vector2D leftEye, Vector2D rightEye){
     double angle =  (90 - calculateAngle(nose, leftEye, rightEye)).abs();
@@ -471,10 +475,10 @@ class PostureCalculator {
   double leftangle = calculateAngle(lefthip, midhip, midshoulder);
   return (rightangle,leftangle);
   }
-  static double calculateLegs(Vector2D leftHip, Vector2D leftKnee, Vector2D leftAnkle, Vector2D rightHip, Vector2D rightKnee, Vector2D rightAnkle){
+  static (double,double) calculateLegs(Vector2D leftHip, Vector2D leftKnee, Vector2D leftAnkle, Vector2D rightHip, Vector2D rightKnee, Vector2D rightAnkle){
     double leftlegs = calculateAngle(leftHip, leftKnee, leftAnkle);
     double rightlegs = calculateAngle(rightHip, rightKnee, rightAnkle);
-    return (max(leftlegs, rightlegs));
+    return (leftlegs, rightlegs);
   }
   static double calculateWristAngle(Vector2D chosenWrist, Vector2D chosenElbow, Vector2D chosen){
     double angle = calculateAngle(chosenElbow, chosenWrist, chosen);
@@ -498,6 +502,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Map<String, File?> _capturedImages = {}; // Each body part gets one image
   Map<String, List<Keypoint>> _keypointsMap = {};
   Map<String, List<Handkeypoint>> _handKeypoints = {};
+  Map<String, Map<String, double>> _anglesMap = {};
 
   List<String> _bodySegments = [
     "Neck",
@@ -559,6 +564,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
     List<Handkeypoint> handkeypoints = [];
+    
     print('Segment $segment');
   if (segment.toLowerCase() == "wrist") {
     handkeypoints = await _handClassifier.processAndRunModel(imageInput);
@@ -602,6 +608,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
   Vector2D midHip = (leftHip + rightHip) / 2;
   Vector2D midKnee = (leftKnee + rightKnee) /2;
+  Vector2D midEar = (leftEar + rightEar) /2;
 
   // Calculate angles
   // A. Neck, Trunk, and Leg Analysis
@@ -610,8 +617,15 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   int neckScore = 0;
 
   // 1️⃣ Calculate Neck Flexion/Extension Score
-  double neckAngle = PostureCalculator.calculateNeckAngle(nose, midShoulder, midHip);
+  double neckAngle = PostureCalculator.calculateNeckAngle(midEar, midShoulder, midHip);
+  double angle2 = 180.0 - neckAngle;
+  print(leftEar);
+  print(rightEar);
   print('Neck Angle: $neckAngle°');
+  print('Neck Angle 2 : $angle2');
+  _anglesMap[segment] = {
+        "Neck": angle2,
+      };
 
   if (neckAngle >= 10 && neckAngle < 20) {
     neckScore += 1;
@@ -645,6 +659,10 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   // 1️⃣ Calculate Trunk Flexion/Extension Score
   double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
   print('Trunk Flexion Angle: $trunkFlexion');
+
+  _anglesMap[segment] = {
+        "Trunk": trunkFlexion
+      };
 
   if (trunkFlexion == 0) {
     trunkScore += 1;
@@ -689,8 +707,12 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   if (segment.toLowerCase() == "legs & posture"){
   int legScore = 0;
 
-  double legs = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
+  var(leftLegs, rightLegs) = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
+  double legs = max(leftLegs, rightLegs);
   print('Leg Angle $legs');
+  _anglesMap[segment] = {
+        "Legs & Posture": legs,
+      };
 
   if (legs <=5 && legs >=-5){
     legScore += 1;
@@ -744,6 +766,10 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   } else if ((leftUpperArmAngle > 90) || (rightupperArmAngle > 90)) {
     upperArmScore += 4;
   }
+
+  // _anglesMap[segment] = {
+  //       "Upper Arm": ,
+  //     };
   
   // 7.1 If shoulder is raised +1 >30
   var (statusshoulderraised, shoulderraiseddegree) = PostureCalculator.calculateShoulderRaised(leftShoulder, rightShoulder);
@@ -1008,7 +1034,7 @@ Widget build(BuildContext context) {
     ),
   ),
 ]
-     else if (currentSegment.toLowerCase() == "arm supported") ...[
+      else if (currentSegment.toLowerCase() == "arm supported") ...[
   Expanded(
     child: SingleChildScrollView(
       padding: EdgeInsets.all(8),
@@ -1317,8 +1343,7 @@ else if (currentSegment.toLowerCase() == "activity score") ...[
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          
+        children: [ 
           Text(
             "Take a photo or import an existing image to evaluate posture.",
             style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
@@ -1413,6 +1438,19 @@ else if (currentSegment.toLowerCase() == "activity score") ...[
     ),
 
     SizedBox(height: 20),
+
+     if (_anglesMap[currentSegment] != null)
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _anglesMap[currentSegment]!.entries.map((entry) {
+          return Text(
+            "${entry.key}: ${entry.value.toStringAsFixed(2)}°",
+            style: TextStyle(fontSize: 14, fontFamily: 'Poppins', fontWeight: FontWeight.w500),
+          );
+        }).toList(),
+      ),
+ 
+  
 
     // Button Section
     Padding(
