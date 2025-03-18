@@ -147,10 +147,11 @@ class VectorPainter extends CustomPainter {
         break;
 
       case "trunk":
-        relevantKeypoints = [11, 12, 13, 14, 5, 6];
+        relevantKeypoints = [11, 12, 5, 6];
         midShoulder = _calculateMidpoint(keypoints, 5, 6, size);
         midHip = _calculateMidpoint(keypoints, 11, 12, size);
-        midKnee = _calculateMidpoint(keypoints, 13, 14, size);
+        double virtualY = midHip!.dy + 50; // Adjust +50 as needed
+    midKnee = Offset(midHip!.dx, virtualY);
         connections = [[-1, -2], [-2, -3]];
         break;
 
@@ -165,16 +166,16 @@ class VectorPainter extends CustomPainter {
       case "upper arm":
         relevantKeypoints = [5, 7, 11, 6, 8, 12];
         connections = [
-          [5, 7], [7, 11], // Left arm
-          [6, 8], [8, 12] // Right arm
+          [7, 5], [5, 11], // Left arm
+          [8, 6], [6, 12] // Right arm
         ];
         break;
 
       case "lower arm":
         relevantKeypoints = [7, 9, 5, 8, 10, 6];
         connections = [
-          [7, 9], [9, 5], // Left lower arm
-          [8, 10], [10, 6] // Right lower arm
+          [9, 7], [7, 5], // Left lower arm
+          [10, 8], [8, 6] // Right lower arm
         ];
         break;
 
@@ -609,6 +610,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Vector2D midHip = (leftHip + rightHip) / 2;
   Vector2D midKnee = (leftKnee + rightKnee) /2;
   Vector2D midEar = (leftEar + rightEar) /2;
+  Vector2D virtualY = Vector2D(midHip.x, midHip.y + 50);
 
   // Calculate angles
   // A. Neck, Trunk, and Leg Analysis
@@ -617,14 +619,12 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   int neckScore = 0;
 
   // 1️⃣ Calculate Neck Flexion/Extension Score
-  double neckAngle = PostureCalculator.calculateNeckAngle(midEar, midShoulder, midHip);
-  double angle2 = 180.0 - neckAngle;
-  print(leftEar);
-  print(rightEar);
+  double neckAngle = 180.0 - PostureCalculator.calculateNeckAngle(midEar, midShoulder, midHip);
+
   print('Neck Angle: $neckAngle°');
-  print('Neck Angle 2 : $angle2');
+  
   _anglesMap[segment] = {
-        "Neck": angle2,
+        "Neck": neckAngle,
       };
 
   if (neckAngle >= 10 && neckAngle < 20) {
@@ -657,7 +657,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   int trunkScore = 0;
 
   // 1️⃣ Calculate Trunk Flexion/Extension Score
-  double trunkFlexion = PostureCalculator.calculateTrunkFlexion(midKnee, midHip, midShoulder);
+  double trunkFlexion = 180.0 - PostureCalculator.calculateTrunkFlexion(virtualY, midHip, midShoulder);
   print('Trunk Flexion Angle: $trunkFlexion');
 
   _anglesMap[segment] = {
@@ -767,9 +767,9 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     upperArmScore += 4;
   }
 
-  // _anglesMap[segment] = {
-  //       "Upper Arm": ,
-  //     };
+  _anglesMap[segment] = {
+        "Upper Arm": max(leftUpperArmAngle,rightupperArmAngle),
+      };
   
   // 7.1 If shoulder is raised +1 >30
   var (statusshoulderraised, shoulderraiseddegree) = PostureCalculator.calculateShoulderRaised(leftShoulder, rightShoulder);
@@ -801,8 +801,15 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     leftElbow, leftWrist, leftShoulder,
     rightElbow, rightWrist, rightShoulder,
   );
+  leftLowerArmAngle = 180.0 - leftLowerArmAngle;
+  rightLowerArmAngle = 180.0 - rightLowerArmAngle;
+
   print('Left Lower Arm Angle: $leftLowerArmAngle°');
   print('Right Lower Arm Angle: $rightLowerArmAngle°');
+  _anglesMap[segment] = {
+        "Lower Arm": max(leftLowerArmAngle,rightLowerArmAngle),
+      };
+
   if ((leftLowerArmAngle >= 60 && leftLowerArmAngle <= 100) || 
       (rightLowerArmAngle >= 60 && rightLowerArmAngle <= 100)) {
     lowerArmScore += 1;
