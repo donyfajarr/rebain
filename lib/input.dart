@@ -8,7 +8,6 @@ import 'dart:math';
 import 'report.dart';
 late TextEditingController _loadController;
 
-
 Map<String, int> segmentScores = {};
 
 class Keypoint {
@@ -20,13 +19,13 @@ class Keypoint {
 
 }
 
-class Handkeypoint {
-  final double x;
-  final double y;
-  final double confidence;
+// class Handkeypoint {
+//   final double x;
+//   final double y;
+//   final double confidence;
 
-  Handkeypoint(this.x, this.y, this.confidence);
-}
+//   Handkeypoint(this.x, this.y, this.confidence);
+// }
 
 class HandKeypointsPainter extends CustomPainter {
   final List<Handkeypoint> handkeypoints;
@@ -108,6 +107,54 @@ class HandKeypointsPainter extends CustomPainter {
   }
 }
 
+class TestHandPainter extends CustomPainter {
+  final List<Handkeypoint> handkeypoint;
+  final String segmentName;
+  final double paddingX;
+  final double paddingY;
+
+  TestHandPainter(this.handkeypoint, this.segmentName, this.paddingX, this.paddingY);
+    @override
+  void paint(Canvas canvas, Size size) {
+    final paintKeypoints = Paint()
+      ..color = Colors.red
+      ..style = PaintingStyle.fill;
+    final paintLines = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = 2.0;
+
+    final textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
+
+    List<Vector2D> vectors = handkeypoint.map((kp) => Vector2D(kp.x, kp.y)).toList();
+    if (vectors.length <21) return;
+
+    List<List<int>> connections = [];
+    List<int> relevantKeypoints = [];
+    switch (segmentName.toLowerCase()) {
+      case "wrist":
+      relevantKeypoints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+      break;
+
+    }
+
+    for (var index in relevantKeypoints){
+      final handkeypoints = handkeypoint[index];
+      if (handkeypoints.confidence != 0.0) {
+        final dx = handkeypoints.x * size.width;
+        final dy = handkeypoints.y * size.height;
+        canvas.drawCircle(Offset(dx, dy),4.0, paintKeypoints);
+
+      }
+    }
+}
+    @override
+      bool shouldRepaint(covariant CustomPainter oldDelegate) {
+        return true;
+      }
+}
+
 class VectorPainter extends CustomPainter {
   final List<Keypoint> keypoints;
   final String segmentName;
@@ -181,41 +228,47 @@ class VectorPainter extends CustomPainter {
 
       case "wrist":
         if (keypoints.isEmpty) return;
-
+        print('gambar');
+        print(keypoints.length);
         // The last keypoint in `keypoints` is the chosen hand keypoint
-        int chosenHandIndex = keypoints.length - 1;
+        // int chosenHandIndex = keypoints.length - 1;
 
-        // Define wrist and elbow indices based on MoveNet keypoints
-        int leftElbowIndex = 7;
-        int leftWristIndex = 9;
-        int rightElbowIndex = 8;
-        int rightWristIndex = 10;
+        // // Define wrist and elbow indices based on MoveNet keypoints
+        // int leftElbowIndex = 7;
+        // int leftWristIndex = 9;
+        // int rightElbowIndex = 8;
+        // int rightWristIndex = 10;
 
-        // Compute distances to determine which wrist is closer to the chosen hand keypoint
-        double distanceLeftWrist = sqrt(pow(keypoints[leftWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
-                                        pow(keypoints[leftWristIndex].y - keypoints[chosenHandIndex].y, 2));
-        double distanceRightWrist = sqrt(pow(keypoints[rightWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
-                                        pow(keypoints[rightWristIndex].y - keypoints[chosenHandIndex].y, 2));
+        // // Compute distances to determine which wrist is closer to the chosen hand keypoint
+        // double distanceLeftWrist = sqrt(pow(keypoints[leftWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
+        //                                 pow(keypoints[leftWristIndex].y - keypoints[chosenHandIndex].y, 2));
+        // double distanceRightWrist = sqrt(pow(keypoints[rightWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
+        //                                 pow(keypoints[rightWristIndex].y - keypoints[chosenHandIndex].y, 2));
 
-        int chosenWristIndex, chosenElbowIndex;
+        // int chosenWristIndex, chosenElbowIndex;
         
-        if (distanceLeftWrist < distanceRightWrist) {
-          chosenWristIndex = leftWristIndex;
-          chosenElbowIndex = leftElbowIndex;
-        } else {
-          chosenWristIndex = rightWristIndex;
-          chosenElbowIndex = rightElbowIndex;
-        }
+        // if (distanceLeftWrist < distanceRightWrist) {
+        //   chosenWristIndex = leftWristIndex;
+        //   chosenElbowIndex = leftElbowIndex;
+        // } else {
+        //   chosenWristIndex = rightWristIndex;
+        //   chosenElbowIndex = rightElbowIndex;
+        // }
 
         // Define relevant keypoints: elbow → wrist → hand keypoint
-        relevantKeypoints = [chosenElbowIndex, chosenWristIndex, chosenHandIndex];
+        // relevantKeypoints = [chosenElbowIndex, chosenWristIndex, chosenHandIndex];
+        relevantKeypoints = [7, 9, 8, 10,];
 
         // Define connections for drawing
         connections = [
-          [chosenElbowIndex, chosenWristIndex],  // Elbow → Wrist
-          [chosenWristIndex, chosenHandIndex]    // Wrist → Chosen Hand Keypoint
+          [7 , 9], [9, 7],
+          [8, 10], [10, 8]
         ];
-
+        // connections = [
+        //   [chosenElbowIndex, chosenWristIndex],  // Elbow → Wrist
+        //   [chosenWristIndex, chosenHandIndex]    // Wrist → Chosen Hand Keypoint
+        // ];
+      
         // print("Wrist Relevant Keypoints: $relevantKeypoints");
         break;
 
@@ -232,6 +285,7 @@ class VectorPainter extends CustomPainter {
       }
     }
 
+    
     // Draw midpoints
     if (midShoulder != null) canvas.drawCircle(midShoulder!, 4.0, paintKeypoints);
     if (midHip != null) canvas.drawCircle(midHip!, 4.0, paintKeypoints);
@@ -497,13 +551,18 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   final ImagePicker _picker = ImagePicker();
   late MoveNetClassifier _moveNetClassifier;
   bool _isModelReady = false;
+  bool _showSelectionUI = false;
   bool _showKeypoints = true;
+  Offset? _selectedPoint;
+  int originalWidth = 0;
+  int originalHeight = 0;
+
   late HandClassifier _handClassifier;
 
   Map<String, File?> _capturedImages = {}; // Each body part gets one image
   Map<String, List<Keypoint>> _keypointsMap = {};
   Map<String, List<Handkeypoint>> _handKeypoints = {};
-  Map<String, Map<String, double>> _anglesMap = {};
+  Map<String, Map<String, List<double>>> _anglesMap = {};
 
   List<String> _bodySegments = [
     "Neck",
@@ -531,7 +590,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   Future<void> _initializeClassifier() async {
     _moveNetClassifier = MoveNetClassifier();
-    _handClassifier = HandClassifier(numThreads: 4);
+    _handClassifier = HandClassifier();
     try {
       print("Loading model...");
       await _moveNetClassifier.loadModel();
@@ -545,21 +604,35 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await _picker.pickImage(source: source);
+  final pickedFile = await _picker.pickImage(source: source);
 
-    if (pickedFile != null && _isModelReady) {
-      final image = File(pickedFile.path);
+  if (pickedFile != null && _isModelReady) {
+    final image = File(pickedFile.path);
+    final image_lib.Image? decodedImage = image_lib.decodeImage(image.readAsBytesSync());
 
+    if (decodedImage != null) {
       setState(() {
         _capturedImages[_bodySegments[_currentStep]] = image;
+        originalWidth = decodedImage.width;
+        originalHeight = decodedImage.height; // ✅ Ensure dimensions are set
+
+        if (_bodySegments[_currentStep].toLowerCase() == "wrist") {
+          _showSelectionUI = true; // Enable point selection for wrist
+          _selectedPoint = null; // Reset previous selection
+        }
       });
+
       await _predict(image, _bodySegments[_currentStep]);
-    } else if (!_isModelReady) {
-      print("Model is not ready yet!");
     } else {
-      print("No image selected.");
+      print("❌ Failed to decode image.");
     }
+  } else if (!_isModelReady) {
+    print("⚠️ Model is not ready yet!");
+  } else {
+    print("⚠️ No image selected.");
   }
+}
+
 
   Future<void> _predict(File image, String segment) async {
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
@@ -567,23 +640,29 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     List<Handkeypoint> handkeypoints = [];
     
     print('Segment $segment');
-  if (segment.toLowerCase() == "wrist") {
-    handkeypoints = await _handClassifier.processAndRunModel(imageInput);
-    if (handkeypoints.isEmpty) {
-      debugPrint("Warning: No hand keypoints detected for segment: $segment");
-    }
-  }
+  // if (segment.toLowerCase() == "wrist") {
+  //   await _handClassifier.loadModel();
+  //   handkeypoints = await _handClassifier.processImage(imageInput);
+  //   if (handkeypoints.isEmpty) {
+  //     debugPrint("Warning: No hand keypoints detected for segment: $segment");
+  //   }
+  // }
 
   setState(() {
-  
   _keypointsMap[segment] = keypoints;
   
-  if (segment.toLowerCase() == "wrist") {
-    _handKeypoints[segment] = handkeypoints.isNotEmpty ? handkeypoints : [];
-  } else {
-    _handKeypoints.remove(segment); // Remove hand keypoints for non-wrist segments
-  }
+  // if (segment.toLowerCase() == "wrist") {
+  //   _handKeypoints[segment] = handkeypoints.isNotEmpty ? handkeypoints : [];
+  // } else {
+  //   _handKeypoints.remove(segment); // Remove hand keypoints for non-wrist segments
+  // }
   print('Keypoint for $segment : ${_keypointsMap[segment]}');
+  print('📌 Hand Keypoints for $segment : ${_handKeypoints[segment]?.length}');
+
+  if (_keypointsMap[segment] == null || _keypointsMap[segment]!.isEmpty) {
+    print("❌ ERROR: No keypoints detected for segment: $segment");
+    return;
+  }
 });
 
     // Convert keypoints to Vector2D
@@ -624,7 +703,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Neck Angle: $neckAngle°');
   
   _anglesMap[segment] = {
-        "Neck": neckAngle,
+        "Neck": [neckAngle],
       };
 
   if (neckAngle >= 10 && neckAngle < 20) {
@@ -661,7 +740,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Trunk Flexion Angle: $trunkFlexion');
 
   _anglesMap[segment] = {
-        "Trunk": trunkFlexion
+        "Trunk": [trunkFlexion]
       };
 
   if (trunkFlexion == 0) {
@@ -708,12 +787,16 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   int legScore = 0;
 
   var(leftLegs, rightLegs) = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
-  double legs = max(leftLegs, rightLegs);
-  print('Leg Angle $legs');
+  // double legs = max(leftLegs, rightLegs);
+  double legs = leftLegs;
+  // FOR NOW ONLY LEFT LEGS, IT SHOULD BE ADD SIDE WHICH FOTO TAKEN
+  print('Leg Angle $leftLegs');
+  print('RLeg Angle $rightLegs');
+  double combine = leftLegs + 0 + rightLegs;
   _anglesMap[segment] = {
-        "Legs & Posture": legs,
+        "Legs & Posture": [leftLegs, rightLegs]
       };
-
+    
   if (legs <=5 && legs >=-5){
     legScore += 1;
   } else if (legs >5){
@@ -768,7 +851,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   }
 
   _anglesMap[segment] = {
-        "Upper Arm": max(leftUpperArmAngle,rightupperArmAngle),
+        "Upper Arm": [leftUpperArmAngle,rightupperArmAngle],
       };
   
   // 7.1 If shoulder is raised +1 >30
@@ -807,7 +890,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Left Lower Arm Angle: $leftLowerArmAngle°');
   print('Right Lower Arm Angle: $rightLowerArmAngle°');
   _anglesMap[segment] = {
-        "Lower Arm": max(leftLowerArmAngle,rightLowerArmAngle),
+        "Lower Arm": [leftLowerArmAngle,rightLowerArmAngle],
       };
 
   if ((leftLowerArmAngle >= 60 && leftLowerArmAngle <= 100) || 
@@ -829,40 +912,33 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
     if (segment.toLowerCase() == 'wrist'){
 
-    double maxX = handkeypoints[0].x;
-    int maxIndex = 0;
+//     double maxX = handkeypoints[0].x;
+//     int maxIndex = 0;
 
-    for (int i = 0; i < handkeypoints.length; i++) {
-      if (handkeypoints[i].x > maxX) {
-        maxX = handkeypoints[i].x;
-        maxIndex = i;
-      }
-    }
+//     for (int i = 0; i < handkeypoints.length; i++) {
+//       if (handkeypoints[i].x > maxX) {
+//         print('handkeypoits');
+//         print(handkeypoints[i]);
+//         maxX = handkeypoints[i].x;
+//         maxIndex = i;
+//       }
+//     }
 
-    Vector2D chosen = Vector2D(handkeypoints[maxIndex].x, handkeypoints[maxIndex].y);
-    Vector2D chosenWrist;
-    Vector2D chosenElbow;
-    print('Chosen: $chosen');
+//     Vector2D chosen = Vector2D(handkeypoints[12].x, handkeypoints[12].y);
+//     Vector2D chosenWrist;
+//     Vector2D chosenElbow;
+//     print('Chosen: $chosen');
+//     print(chosen.x);
 
     
-
-    double distanceLeftWrist = leftWrist.distanceTo(chosen);
-    double distanceRightWrist = rightWrist.distanceTo(chosen);
-
-
-  if (distanceLeftWrist < distanceRightWrist) {
-      chosenWrist = leftWrist;
-      chosenElbow = leftElbow;
-  } else {
-      chosenWrist = rightWrist;
-      chosenElbow = rightElbow;}
-
-    double wristAngle = PostureCalculator.calculateWristAngle(chosenWrist, chosenElbow, chosen);
+//     print('chosenaga');
+    double wristAngle = PostureCalculator.calculateWristAngle(leftWrist, leftElbow, leftShoulder);
     
-      print('Wrist Angle: $wristAngle');
-    _keypointsMap.values.last.add(
-    Keypoint(chosen.x, chosen.y, 1.0) // Hand keypoint from handKeypoints
-  );
+//       print('Wrist Angle: $wristAngle');
+//     _keypointsMap.values.last.add(
+//     Keypoint(chosen.x, chosen.y, 1.0)
+//     // print(_keypointsMap); // Hand keypoint from handKeypoints
+//   );
 
 if (segment.toLowerCase() == "wrist"){
   int wristScore = 0;
@@ -874,8 +950,8 @@ if (segment.toLowerCase() == "wrist"){
   segmentScores['wristScore'] = wristScore;
   print('Total Wrist Score: $wristScore');
 };
-}
-}
+// }
+}}
 
   void _nextSegment() {
     if (_currentStep < _bodySegments.length - 1) {
@@ -911,7 +987,7 @@ if (segment.toLowerCase() == "wrist"){
       _showKeypoints = !_showKeypoints;
     });
   }
-
+// bool _showCalculatedImage = false;
 
   @override
 Widget build(BuildContext context) {
@@ -1219,7 +1295,8 @@ Widget build(BuildContext context) {
     ),
   ),
 ]
-else if (currentSegment.toLowerCase() == "activity score") ...[
+
+      else if (currentSegment.toLowerCase() == "activity score") ...[
   Expanded(
     child: SingleChildScrollView(
       padding: EdgeInsets.all(8),
@@ -1340,185 +1417,276 @@ else if (currentSegment.toLowerCase() == "activity score") ...[
     ),
   ),
 ]
-
-      else ...[
-        Column(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    // Header Section
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [ 
-          Text(
-            "Take a photo or import an existing image to evaluate posture.",
-            style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
-          ),
-        ],
+     else if (currentSegment.toLowerCase() == "wrist" && _showSelectionUI) ...[
+  Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+        child: Text(
+          "Tap on the middle fingertip to set its position for evaluation.",
+          style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+        ),
       ),
-    ),
 
-    SizedBox(height: 10),
+      Center(
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            GestureDetector(
+              onTapDown: (TapDownDetails details) {
+                RenderBox box = context.findRenderObject() as RenderBox;
+                Offset localPosition = box.globalToLocal(details.globalPosition);
 
-    // Image Display Area
-    Container(
-      margin: EdgeInsets.symmetric(horizontal: 16),
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            "Segment: $currentSegment",
-            style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
-          ),
-          SizedBox(height: 10),
-
-          _capturedImages[currentSegment] != null
-              ? Builder(
-                  builder: (context) {
-                    final imageFile = _capturedImages[currentSegment]!;
-                    final int originalWidth = image_lib.decodeImage(imageFile.readAsBytesSync())!.width;
-                    final int originalHeight = image_lib.decodeImage(imageFile.readAsBytesSync())!.height;
-                    double scale = 256 / max(originalWidth, originalHeight);
-                    double newWidth = originalWidth * scale;
-                    double newHeight = originalHeight * scale;
-                    double paddingX = (256 - newWidth) / 2;
-                    double paddingY = (256 - newHeight) / 2;
-
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 256,
-                          height: 256,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.file(
-                              imageFile,
-                              width: newWidth,
-                              height: newHeight,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        if (_keypointsMap[currentSegment] != null)
-                          CustomPaint(
-                            size: Size(256, 256),
-                            painter: VectorPainter(
-                              _keypointsMap[currentSegment]!,
-                              currentSegment,
-                              paddingX,
-                              paddingY,
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                )
-              : Container(
-                  width: 256,
-                  height: 256,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.green, width: 2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Text(
-                      "No image captured for $currentSegment",
-                      style: TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins'),
-                      textAlign: TextAlign.center,
-                    ),
+                setState(() {
+                  _selectedPoint = localPosition;
+                });
+              },
+              child: Container(
+                width: 300,
+                height: 300,
+                color: Colors.transparent, // Tap area behind the image
+                child: Center(
+                  child: Image.file(
+                    _capturedImages[currentSegment]!,
+                    width: 256,
+                    height: 256,
+                    fit: BoxFit.contain,
                   ),
                 ),
+              ),
+            ),
+            if (_selectedPoint != null)
+              Positioned(
+                left: _selectedPoint!.dx - 5,
+                top: _selectedPoint!.dy - 5,
+                child: Icon(Icons.circle, color: Colors.red, size: 10),
+              ),
+          ],
+        ),
+      ),
+
+      SizedBox(height: 20),
+
+      ElevatedButton(
+        onPressed: () {
+          if (_selectedPoint != null) {
+            setState(() {
+              _keypointsMap[currentSegment] = [Keypoint(_selectedPoint!.dx, _selectedPoint!.dy, 1.0)];
+              _showSelectionUI = false; // Return to normal UI
+            });
+          }
+        },
+        child: Text("Confirm Selection"),
+      ),
+    ],
+  ),
+]
+      else ...[
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [ 
+                  Text(
+                    "Take a photo or import an existing image to evaluate posture.",
+                    style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+                  ),
+                ],
+              ),
+            ),
+
+          SizedBox(height: 10),
+
+          // Image Display Area
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Segment: $currentSegment",
+                  style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+                ),
+                SizedBox(height: 10),
+
+                _capturedImages[currentSegment] != null && !(currentSegment.toLowerCase() == "wrist" && !_showSelectionUI)
+                    ? Builder(
+                        builder: (context) {
+                          final imageFile = _capturedImages[currentSegment]!;
+                          final int originalWidth = image_lib.decodeImage(imageFile.readAsBytesSync())!.width;
+                          final int originalHeight = image_lib.decodeImage(imageFile.readAsBytesSync())!.height;
+                          double scale = 256 / max(originalWidth, originalHeight);
+                          double newWidth = originalWidth * scale;
+                          double newHeight = originalHeight * scale;
+                          double paddingX = (256 - newWidth) / 2;
+                          double paddingY = (256 - newHeight) / 2;
+
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 256,
+                                height: 256,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.file(
+                                    imageFile,
+                                    width: newWidth,
+                                    height: newHeight,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                              if (_keypointsMap[currentSegment] != null)
+                                Stack(
+                                  children: [
+                                    CustomPaint(
+                                      size: Size(256, 256),
+                                      painter: VectorPainter(
+                                        _keypointsMap[currentSegment]!,
+                                        currentSegment,
+                                        paddingX,
+                                        paddingY,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                          );
+                        },
+                      )
+                    : Container(
+                        width: 256,
+                        height: 256,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.green, width: 2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "No image captured for $currentSegment",
+                            style: TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins'),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                SizedBox(height: 20),
+                if (currentSegment.toLowerCase() == "wrist" && _capturedImages[currentSegment] != null && !_showSelectionUI)
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _showSelectionUI = true;
+                        });
+                      },
+                      child: Text("Select Middle Finger Tip"),
+                    ),
+
+              ],
+            ),
+          ),
+
           SizedBox(height: 20),
-        ],
-      ),
-    ),
 
-    SizedBox(height: 20),
+          if (_anglesMap[currentSegment] != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _anglesMap[currentSegment]!.entries.map((entry) {
+                  List<double> values = entry.value; // Ensure we access it safely
+                  String formattedText;
 
-     if (_anglesMap[currentSegment] != null)
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: _anglesMap[currentSegment]!.entries.map((entry) {
-          return Text(
-            "${entry.key}: ${entry.value.toStringAsFixed(2)}°",
-            style: TextStyle(fontSize: 14, fontFamily: 'Poppins', fontWeight: FontWeight.w500),
-          );
-        }).toList(),
-      ),
- 
+                  if (values.length == 2) {
+                    formattedText = "${entry.key}: L ${values[0].toStringAsFixed(2)}° | R ${values[1].toStringAsFixed(2)}°";
+                  } else if (values.length == 1) {
+                    formattedText = "${entry.key}: ${values[0].toStringAsFixed(2)}°"; // Only one value available
+                  } else {
+                    formattedText = "${entry.key}: No data available"; // Empty list case
+                  }
+
+                  return Text(
+                    formattedText,
+                    style: TextStyle(fontSize: 14, fontFamily: 'Poppins', fontWeight: FontWeight.w500),
+                  );
+                }).toList(),
+              ),
+      
   
 
-    // Button Section
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            // Button Section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                    onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
+                    child: Text('Gallery', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
+                  ),
+                  SizedBox(width: 10),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                    ),
+                    onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
+                    child: Text('Scan', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
+                  ),
+                ],
+              ),
             ),
-            onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
-            child: Text('Gallery', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
-          ),
-          SizedBox(width: 10),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
-            ),
-            onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
-            child: Text('Scan', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    ),
 
-    SizedBox(height: 20),
+            SizedBox(height: 20),
 
-    // Navigation Buttons
-    Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Column(
-        children: [
-          SizedBox(height: 10),
-          Align(
-            alignment: Alignment.center,
-            child : 
-             ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color.fromRGBO(55, 149, 112, 1),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            // Navigation Buttons
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                children: [
+                  SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.center,
+                    child : 
+                    ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                    onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
+                    child: Text(
+                      _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
+                    ),
+                  ),
+                    )
+                
+                ],
+              ),
             ),
-            onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
-            child: Text(
-              _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
-            ),
-          ),
-            )
-         
-        ],
-      ),
-    ),
   ],
 ),
 ],
 ],
+
+
 ),
 ),
 );

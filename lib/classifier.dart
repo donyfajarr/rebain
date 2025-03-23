@@ -121,8 +121,11 @@ Future<List<Keypoint>> processAndRunModel(Image imageFile) async {
     print(inputBuffer);
     interpreter.run(inputBuffer, _outputBuffer.buffer);
     final outputData = _outputBuffer.getDoubleList();
+    
     List<Keypoint> keypoints = parseKeypoints(outputData, imageFile.width.toDouble(), imageFile.height.toDouble());
+    // close();
     return keypoints;
+    
 
   } catch (e) {
     print("Error running model: $e");
@@ -149,6 +152,7 @@ print(keypoints.length);
   return keypoints;
 }
   void close() {
+    print('jalanclose');
     interpreter.close();
   }
 }

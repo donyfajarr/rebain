@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'create.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import 'handclassifier.dart';
 
 // Table A: Neck Scores
 Map<int, Map<int, Map<int, int>>> rebaTableA = {
