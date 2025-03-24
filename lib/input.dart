@@ -107,53 +107,53 @@ class HandKeypointsPainter extends CustomPainter {
   }
 }
 
-class TestHandPainter extends CustomPainter {
-  final List<Handkeypoint> handkeypoint;
-  final String segmentName;
-  final double paddingX;
-  final double paddingY;
+// class TestHandPainter extends CustomPainter {
+//   final List<Handkeypoint> handkeypoint;
+//   final String segmentName;
+//   final double paddingX;
+//   final double paddingY;
 
-  TestHandPainter(this.handkeypoint, this.segmentName, this.paddingX, this.paddingY);
-    @override
-  void paint(Canvas canvas, Size size) {
-    final paintKeypoints = Paint()
-      ..color = Colors.red
-      ..style = PaintingStyle.fill;
-    final paintLines = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 2.0;
+//   TestHandPainter(this.handkeypoint, this.segmentName, this.paddingX, this.paddingY);
+//     @override
+//   void paint(Canvas canvas, Size size) {
+//     final paintKeypoints = Paint()
+//       ..color = Colors.red
+//       ..style = PaintingStyle.fill;
+//     final paintLines = Paint()
+//       ..color = Colors.blue
+//       ..strokeWidth = 2.0;
 
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+//     final textPainter = TextPainter(
+//       textDirection: TextDirection.ltr,
+//     );
 
-    List<Vector2D> vectors = handkeypoint.map((kp) => Vector2D(kp.x, kp.y)).toList();
-    if (vectors.length <21) return;
+//     List<Vector2D> vectors = handkeypoint.map((kp) => Vector2D(kp.x, kp.y)).toList();
+//     if (vectors.length <21) return;
 
-    List<List<int>> connections = [];
-    List<int> relevantKeypoints = [];
-    switch (segmentName.toLowerCase()) {
-      case "wrist":
-      relevantKeypoints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
-      break;
+//     List<List<int>> connections = [];
+//     List<int> relevantKeypoints = [];
+//     switch (segmentName.toLowerCase()) {
+//       case "wrist":
+//       relevantKeypoints = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+//       break;
 
-    }
+//     }
 
-    for (var index in relevantKeypoints){
-      final handkeypoints = handkeypoint[index];
-      if (handkeypoints.confidence != 0.0) {
-        final dx = handkeypoints.x * size.width;
-        final dy = handkeypoints.y * size.height;
-        canvas.drawCircle(Offset(dx, dy),4.0, paintKeypoints);
+//     for (var index in relevantKeypoints){
+//       final handkeypoints = handkeypoint[index];
+//       if (handkeypoints.confidence != 0.0) {
+//         final dx = handkeypoints.x * size.width;
+//         final dy = handkeypoints.y * size.height;
+//         canvas.drawCircle(Offset(dx, dy),4.0, paintKeypoints);
 
-      }
-    }
-}
-    @override
-      bool shouldRepaint(covariant CustomPainter oldDelegate) {
-        return true;
-      }
-}
+//       }
+//     }
+// }
+//     @override
+//       bool shouldRepaint(covariant CustomPainter oldDelegate) {
+//         return true;
+//       }
+// }
 
 class VectorPainter extends CustomPainter {
   final List<Keypoint> keypoints;
@@ -179,14 +179,14 @@ class VectorPainter extends CustomPainter {
     // 🔹 Get the keypoints & connections for the selected segment
 
     List<Vector2D> vectors = keypoints.map((kp) => Vector2D(kp.x, kp.y)).toList();
-    if (vectors.length <17) return;
+    // if (vectors.length <17) return;
 
     List<List<int>> connections = [];
     List<int> relevantKeypoints = [];
     Offset? midShoulder, midHip, midKnee, midEar;
      switch (segmentName.toLowerCase()) {
       case "neck":
-        relevantKeypoints = [3,4, 5, 6, 11, 12];
+        relevantKeypoints = [3, 4, 5, 6, 11, 12];
         midEar = _calculateMidpoint(keypoints, 3, 4, size);
         midShoulder = _calculateMidpoint(keypoints, 5, 6, size);
         midHip = _calculateMidpoint(keypoints, 11, 12, size);
@@ -205,8 +205,8 @@ class VectorPainter extends CustomPainter {
       case "legs & posture":
         relevantKeypoints = [11, 13, 15, 12, 14, 16];
         connections = [
-          [11, 13], [13, 15], // Left leg
-          [12, 14], [14, 16] // Right leg
+          [11, 13], [13, 15],
+          [12, 14], [14, 16] 
         ];
         break;
 
@@ -228,48 +228,14 @@ class VectorPainter extends CustomPainter {
 
       case "wrist":
         if (keypoints.isEmpty) return;
-        print('gambar');
-        print(keypoints.length);
-        // The last keypoint in `keypoints` is the chosen hand keypoint
-        // int chosenHandIndex = keypoints.length - 1;
-
-        // // Define wrist and elbow indices based on MoveNet keypoints
-        // int leftElbowIndex = 7;
-        // int leftWristIndex = 9;
-        // int rightElbowIndex = 8;
-        // int rightWristIndex = 10;
-
-        // // Compute distances to determine which wrist is closer to the chosen hand keypoint
-        // double distanceLeftWrist = sqrt(pow(keypoints[leftWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
-        //                                 pow(keypoints[leftWristIndex].y - keypoints[chosenHandIndex].y, 2));
-        // double distanceRightWrist = sqrt(pow(keypoints[rightWristIndex].x - keypoints[chosenHandIndex].x, 2) + 
-        //                                 pow(keypoints[rightWristIndex].y - keypoints[chosenHandIndex].y, 2));
-
-        // int chosenWristIndex, chosenElbowIndex;
-        
-        // if (distanceLeftWrist < distanceRightWrist) {
-        //   chosenWristIndex = leftWristIndex;
-        //   chosenElbowIndex = leftElbowIndex;
-        // } else {
-        //   chosenWristIndex = rightWristIndex;
-        //   chosenElbowIndex = rightElbowIndex;
-        // }
-
-        // Define relevant keypoints: elbow → wrist → hand keypoint
-        // relevantKeypoints = [chosenElbowIndex, chosenWristIndex, chosenHandIndex];
-        relevantKeypoints = [7, 9, 8, 10,];
+        relevantKeypoints = [7, 9, 8, 10, 17];
 
         // Define connections for drawing
         connections = [
-          [7 , 9], [9, 7],
-          [8, 10], [10, 8]
+          [7 , 9], [9, 17], // Left Wrist
+          [8, 10], [10, 17]
         ];
-        // connections = [
-        //   [chosenElbowIndex, chosenWristIndex],  // Elbow → Wrist
-        //   [chosenWristIndex, chosenHandIndex]    // Wrist → Chosen Hand Keypoint
-        // ];
-      
-        // print("Wrist Relevant Keypoints: $relevantKeypoints");
+
         break;
 
     }
@@ -281,7 +247,6 @@ class VectorPainter extends CustomPainter {
         final dx = keypoint.x * size.width;
         final dy = keypoint.y * size.height;
         canvas.drawCircle(Offset(dx, dy), 4.0, paintKeypoints);
-        
       }
     }
 
@@ -616,7 +581,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
         originalWidth = decodedImage.width;
         originalHeight = decodedImage.height; // ✅ Ensure dimensions are set
 
-        if (_bodySegments[_currentStep].toLowerCase() == "wrist") {
+        if (_bodySegments[_currentStep].toLowerCase() == "wrist" ) {
           _showSelectionUI = true; // Enable point selection for wrist
           _selectedPoint = null; // Reset previous selection
         }
@@ -634,36 +599,28 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 }
 
 
-  Future<void> _predict(File image, String segment) async {
+  Future<void> _predict(File image, String segment, [List<Keypoint>? existingKeypoints]) async {
     final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
     List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
-    List<Handkeypoint> handkeypoints = [];
     
     print('Segment $segment');
-  // if (segment.toLowerCase() == "wrist") {
-  //   await _handClassifier.loadModel();
-  //   handkeypoints = await _handClassifier.processImage(imageInput);
-  //   if (handkeypoints.isEmpty) {
-  //     debugPrint("Warning: No hand keypoints detected for segment: $segment");
-  //   }
-  // }
 
-  setState(() {
-  _keypointsMap[segment] = keypoints;
-  
-  // if (segment.toLowerCase() == "wrist") {
-  //   _handKeypoints[segment] = handkeypoints.isNotEmpty ? handkeypoints : [];
-  // } else {
-  //   _handKeypoints.remove(segment); // Remove hand keypoints for non-wrist segments
-  // }
-  print('Keypoint for $segment : ${_keypointsMap[segment]}');
-  print('📌 Hand Keypoints for $segment : ${_handKeypoints[segment]?.length}');
+    setState(() {
+    _keypointsMap[segment] = keypoints;
+    if (segment.toLowerCase() == "wrist" && existingKeypoints != null) {
+      print(existingKeypoints[17].x);
+      print('dikirim');
+      _keypointsMap[segment]!.add(existingKeypoints[17]); // Keep the manually added keypoint
+    }
+    
+    print('Keypoint for $segment : ${_keypointsMap[segment]}');
+    print('📌 Hand Keypoints for $segment : ${_handKeypoints[segment]?.length}');
 
-  if (_keypointsMap[segment] == null || _keypointsMap[segment]!.isEmpty) {
-    print("❌ ERROR: No keypoints detected for segment: $segment");
-    return;
-  }
-});
+    if (_keypointsMap[segment] == null || _keypointsMap[segment]!.isEmpty) {
+      print("❌ ERROR: No keypoints detected for segment: $segment");
+      return;
+    }
+  });
 
     // Convert keypoints to Vector2D
   Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
@@ -684,10 +641,9 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Vector2D rightHip = Vector2D(keypoints[12].x, keypoints[12].y);
   Vector2D rightKnee = Vector2D(keypoints[14].x, keypoints[14].y);
   Vector2D rightAnkle = Vector2D(keypoints[16].x, keypoints[16].y);
-
+  
   Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
   Vector2D midHip = (leftHip + rightHip) / 2;
-  Vector2D midKnee = (leftKnee + rightKnee) /2;
   Vector2D midEar = (leftEar + rightEar) /2;
   Vector2D virtualY = Vector2D(midHip.x, midHip.y + 50);
 
@@ -780,7 +736,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Total Trunk Score: $trunkScore');
 }
  
-  
   // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
 
   if (segment.toLowerCase() == "legs & posture"){
@@ -811,7 +766,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     segmentScores['legScore'] = legScore;
     print('Total Leg Score : $legScore');
   }
-
 
   // 4. Total score from 1-3
   // int postureScoreA = segmentScores['neckScore'] + segmentScores['trunkScore'] + segmentScores['legScore'];
@@ -911,46 +865,26 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
 
     if (segment.toLowerCase() == 'wrist'){
-
-//     double maxX = handkeypoints[0].x;
-//     int maxIndex = 0;
-
-//     for (int i = 0; i < handkeypoints.length; i++) {
-//       if (handkeypoints[i].x > maxX) {
-//         print('handkeypoits');
-//         print(handkeypoints[i]);
-//         maxX = handkeypoints[i].x;
-//         maxIndex = i;
-//       }
-//     }
-
-//     Vector2D chosen = Vector2D(handkeypoints[12].x, handkeypoints[12].y);
-//     Vector2D chosenWrist;
-//     Vector2D chosenElbow;
-//     print('Chosen: $chosen');
-//     print(chosen.x);
-
+    Vector2D chosen = Vector2D(keypoints[17].x, keypoints[17].y);
+    print(keypoints[17].x);
+    double wristAngle = PostureCalculator.calculateWristAngle(leftWrist, leftElbow, chosen);
     
-//     print('chosenaga');
-    double wristAngle = PostureCalculator.calculateWristAngle(leftWrist, leftElbow, leftShoulder);
-    
-//       print('Wrist Angle: $wristAngle');
-//     _keypointsMap.values.last.add(
-//     Keypoint(chosen.x, chosen.y, 1.0)
-//     // print(_keypointsMap); // Hand keypoint from handKeypoints
-//   );
+    print('Wrist Angle: $wristAngle');
+    _anglesMap[segment] = {
+        "Wrist": [wristAngle],
+      };
+    // segmentScores ['wrist'] = wristAngle.toInt();
 
-if (segment.toLowerCase() == "wrist"){
-  int wristScore = 0;
-  if (wristAngle >=-15 && wristAngle <=15){
-    wristScore +=1;
-  } else if (wristAngle <-15 || wristAngle >15){
-    wristScore +=2;
-  }
-  segmentScores['wristScore'] = wristScore;
-  print('Total Wrist Score: $wristScore');
-};
-// }
+    int wristScore = 0;
+    if (wristAngle >=-15 && wristAngle <=15){
+      wristScore +=1;
+    } else if (wristAngle <-15 || wristAngle >15){
+      wristScore +=2;
+    }
+    segmentScores['wristScore'] = wristScore;
+    print('Total Wrist Score: $wristScore');
+  
+  
 }}
 
   void _nextSegment() {
@@ -987,8 +921,7 @@ if (segment.toLowerCase() == "wrist"){
       _showKeypoints = !_showKeypoints;
     });
   }
-// bool _showCalculatedImage = false;
-
+  
   @override
 Widget build(BuildContext context) {
   String currentSegment = _bodySegments[_currentStep];
@@ -1295,7 +1228,6 @@ Widget build(BuildContext context) {
     ),
   ),
 ]
-
       else if (currentSegment.toLowerCase() == "activity score") ...[
   Expanded(
     child: SingleChildScrollView(
@@ -1417,7 +1349,7 @@ Widget build(BuildContext context) {
     ),
   ),
 ]
-     else if (currentSegment.toLowerCase() == "wrist" && _showSelectionUI) ...[
+      else if (currentSegment.toLowerCase() == "wrist" && _showSelectionUI) ...[
   Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -1435,53 +1367,88 @@ Widget build(BuildContext context) {
           children: [
             GestureDetector(
               onTapDown: (TapDownDetails details) {
-                RenderBox box = context.findRenderObject() as RenderBox;
-                Offset localPosition = box.globalToLocal(details.globalPosition);
+                final RenderBox box = context.findRenderObject() as RenderBox;
+                final Offset localPosition = box.globalToLocal(details.localPosition);
+
+                // Ensure tap is within bounds
+                double adjustedX = localPosition.dx.clamp(0, 256);
+                double adjustedY = localPosition.dy.clamp(0, 256);
 
                 setState(() {
-                  _selectedPoint = localPosition;
+                  _selectedPoint = Offset(adjustedX, adjustedY);
                 });
+
+                // Normalize for saving
+                double normalizedX = adjustedX / 256;
+                double normalizedY = adjustedY / 256;
+
+                print("Mapped Position: X=$adjustedX, Y=$adjustedY");
+                print("Normalized: X=$normalizedX, Y=$normalizedY");
               },
-              child: Container(
-                width: 300,
-                height: 300,
-                color: Colors.transparent, // Tap area behind the image
-                child: Center(
-                  child: Image.file(
-                    _capturedImages[currentSegment]!,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
                     width: 256,
                     height: 256,
-                    fit: BoxFit.contain,
+                    color: Colors.transparent, // Tap detection area
+                    child: Image.file(
+                      _capturedImages[currentSegment]!,
+                      width: 256,
+                      height: 256,
+                      fit: BoxFit.cover, // Ensure it fills exactly
+                    ),
+                  ),
+                  if (_selectedPoint != null)
+                    Positioned(
+                      left: _selectedPoint!.dx - 5,
+                      top: _selectedPoint!.dy - 5,
+                      child: Icon(Icons.circle, color: Colors.red, size: 10),
+                        ),
+                    ],
                   ),
                 ),
-              ),
+              ],
             ),
-            if (_selectedPoint != null)
-              Positioned(
-                left: _selectedPoint!.dx - 5,
-                top: _selectedPoint!.dy - 5,
-                child: Icon(Icons.circle, color: Colors.red, size: 10),
-              ),
-          ],
         ),
-      ),
-
+    
       SizedBox(height: 20),
 
       ElevatedButton(
-        onPressed: () {
+        onPressed: () async {
           if (_selectedPoint != null) {
             setState(() {
-              _keypointsMap[currentSegment] = [Keypoint(_selectedPoint!.dx, _selectedPoint!.dy, 1.0)];
-              _showSelectionUI = false; // Return to normal UI
+              // Ensure keypoints list exists before adding
+              _keypointsMap[currentSegment] ??= [];
+
+              // Normalize coordinates and add new keypoint
+              double normalizedX = _selectedPoint!.dx / 256;
+              double normalizedY = _selectedPoint!.dy / 256;
+              Keypoint wristKeypoint = Keypoint(normalizedX, normalizedY, 1.0);
+
+              // Append or replace the wrist keypoint (17th keypoint)
+              if (_keypointsMap[currentSegment]!.length >= 18) {
+                _keypointsMap[currentSegment]![17] = wristKeypoint; // Replace existing wrist keypoint
+              } else {
+                _keypointsMap[currentSegment]!.add(wristKeypoint); // Add new keypoint
+              }
+
+              _showSelectionUI = false; // Hide selection UI
             });
+
+            print("Updated keypoints for $currentSegment: ${_keypointsMap[currentSegment]}");
+
+            // ✅ Pass the stored keypoints into _predict to avoid losing them
+            if (_capturedImages[currentSegment] != null) {
+              await _predict(_capturedImages[currentSegment]!, currentSegment, _keypointsMap[currentSegment]!);
+            }
           }
         },
         child: Text("Confirm Selection"),
       ),
-    ],
-  ),
-]
+          ],
+        ),
+      ]
       else ...[
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1519,7 +1486,7 @@ Widget build(BuildContext context) {
                 ),
                 SizedBox(height: 10),
 
-                _capturedImages[currentSegment] != null && !(currentSegment.toLowerCase() == "wrist" && !_showSelectionUI)
+                _capturedImages[currentSegment] != null
                     ? Builder(
                         builder: (context) {
                           final imageFile = _capturedImages[currentSegment]!;
@@ -1530,7 +1497,6 @@ Widget build(BuildContext context) {
                           double newHeight = originalHeight * scale;
                           double paddingX = (256 - newWidth) / 2;
                           double paddingY = (256 - newHeight) / 2;
-
                           return Stack(
                             alignment: Alignment.center,
                             children: [
@@ -1585,15 +1551,7 @@ Widget build(BuildContext context) {
                         ),
                       ),
                 SizedBox(height: 20),
-                if (currentSegment.toLowerCase() == "wrist" && _capturedImages[currentSegment] != null && !_showSelectionUI)
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _showSelectionUI = true;
-                        });
-                      },
-                      child: Text("Select Middle Finger Tip"),
-                    ),
+                
 
               ],
             ),
