@@ -6,7 +6,7 @@ import 'package:intl/intl.dart';
 import 'create.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'handclassifier.dart';
+
 
 // Table A: Neck Scores
 Map<int, Map<int, Map<int, int>>> rebaTableA = {
@@ -83,9 +83,7 @@ class RebaReportScreen extends StatefulWidget {
   final Map<String, int> bodyPartScores;
   final Map<String, File?> capturedImages;
   Map<String, List<Keypoint>> keypoints = {};
-  // Map<String, List<Handkeypoint>> handkeypoints = {};
-   // Images linked to segments
-
+  
   RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints});
 
   @override
@@ -137,8 +135,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   @override
   void initState() {
     super.initState();
-    timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now()); // Get current time
-    // overallScore = calculateOverallScore(widget.bodyPartScores); // Compute REBA final score
+    // timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
     Map<String, int> rebaScores = calculateOverallScore(widget.bodyPartScores);
     
     rebaScoreA = rebaScores['rebaScoreA']!;
@@ -153,16 +150,13 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     String userId = FirebaseAuth.instance.currentUser?.uid ?? "anonymous";
     print('userId: $userId');
 
-    // ✅ Auto-generate assessmentId (Firestore document ID)
-    String assessmentId =
-        FirebaseFirestore.instance.collection('reba_assessments').doc().id;
+    String assessmentId = FirebaseFirestore.instance.collection('reba_assessments').doc().id;
 
     String description = _descriptionController.text.trim();
     String title = _titleController.text.trim();
 
     List<Map<String, dynamic>> images = [];
 
-    // ✅ Ensure timestamp & overallScore are initialized
     timestamp = DateTime.now().toIso8601String();
     overallScore = overallScore ?? 0;
 
@@ -381,30 +375,30 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
             );
           }).toList(),
 
-// Overall REBA Score (Centered)
-SizedBox(height: 20),
-Center(
-  child: Column(
-    children: [
-      Container(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        decoration: BoxDecoration(
-          color: Color.fromRGBO(235, 237, 240, 1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          "$overallScore",
-          style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
-        ),
-      ),
-      SizedBox(height: 8),
-      Text(
-        "REBA Score",
-        style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
-      ),
-    ],
-  ),
-),
+              // Overall REBA Score (Centered)
+              SizedBox(height: 20),
+              Center(
+                child: Column(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Color.fromRGBO(235, 237, 240, 1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        "$overallScore",
+                        style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      "REBA Score",
+                      style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
 
 
               SizedBox(height: 20),
