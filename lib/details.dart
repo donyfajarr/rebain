@@ -511,7 +511,8 @@ Widget build(BuildContext context) {
                                       keypoints,
                                       segment,
                                       0, // Adjust if needed
-                                      0, // Adjust if needed
+                                      0,
+                                      null // Adjust if needed
                                     ),
                                   ),
                                 ),

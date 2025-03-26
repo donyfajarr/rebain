@@ -83,10 +83,10 @@ class RebaReportScreen extends StatefulWidget {
   final Map<String, int> bodyPartScores;
   final Map<String, File?> capturedImages;
   Map<String, List<Keypoint>> keypoints = {};
-  Map<String, List<Handkeypoint>> handkeypoints = {};
+  // Map<String, List<Handkeypoint>> handkeypoints = {};
    // Images linked to segments
 
-  RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints, required this.handkeypoints});
+  RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints});
 
   @override
   _RebaReportScreenState createState() => _RebaReportScreenState();
@@ -187,15 +187,15 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
                   "keypoints": keypoints,
                 };
 
-                if (segmentKey == "Wrist") {
-              List<Map<String, double>> handkeypoints = widget.handkeypoints[segmentKey]
-                      ?.map((hkp) => {"x": hkp.x, "y": hkp.y})
-                      .toList() ??
-                  [];
-                if (handkeypoints.isNotEmpty) {
-                                imageData["handkeypoints"] = handkeypoints;
-                              }
-                            }
+              //   if (segmentKey == "Wrist") {
+              // List<Map<String, double>> handkeypoints = widget.handkeypoints[segmentKey]
+              //         ?.map((hkp) => {"x": hkp.x, "y": hkp.y})
+              //         .toList() ??
+              //     [];
+              //   if (handkeypoints.isNotEmpty) {
+              //                   imageData["handkeypoints"] = handkeypoints;
+              //                 }
+              //               }
 
                             images.add(imageData);
                           }
