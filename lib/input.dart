@@ -232,10 +232,6 @@ class PostureCalculator {
     Vector2D leftShoulder, Vector2D leftElbow, Vector2D midShoulder, Vector2D rightShoulder, Vector2D rightElbow){
       double leftAngle = calculateAngle(leftElbow, leftShoulder, midShoulder);
       double rightAngle = calculateAngle(rightElbow, rightShoulder, midShoulder);
-      // print('left abducted $leftAngle');
-      // print('right abducted $rightAngle');
-      // double angle = max(leftAngle, rightAngle);
-      // String status = angle > 110.0 ? "Upper Arm is Abducted" : "Upper Arm is not Abducted";
       return (leftAngle, rightAngle);
     }
   static double calculateShoulderRaised(Vector2D leftShoulder, Vector2D rightShoulder) {
@@ -247,18 +243,21 @@ class PostureCalculator {
 
     return calculateAngle(midEar, midShoulder, midHip);
   }
-  static double calculateNeckTwisted(Vector2D nose, Vector2D leftEye, Vector2D rightEye){
-    double angle =  (90 - calculateAngle(nose, leftEye, rightEye)).abs();
+  static double calculateNeckTwisted(Vector2D nose, Vector2D leftShoulder, Vector2D rightShoulder) {
+    Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
+     // Corrected: Check angle in the horizontal plane
+    double verticalDiff = (nose.x - midShoulder.x).abs();
 
-    return angle;
-
+    return verticalDiff;
   }
-  static (double,double) calculateNeckBending(Vector2D leftEar, Vector2D midShoulder, Vector2D leftShoulder,
+  
+  static double calculateNeckBending(Vector2D leftEar, Vector2D midShoulder, Vector2D leftShoulder,
   Vector2D rightEar, Vector2D rightShoulder){
-    double neckbendingleft = (65- calculateAngle(leftEar, midShoulder, leftEar)).abs();
-    double neckbendingright = (65- calculateAngle(rightEar, midShoulder, rightEar)).abs();
+    double neckBendingLeft = (65- calculateAngle(leftEar, midShoulder, leftShoulder)).abs();
+    double neckBendingRight = (65- calculateAngle(rightEar, midShoulder, rightShoulder)).abs();
+    double meanNeckBending = (neckBendingLeft + neckBendingRight) / 2;
     
-    return (neckbendingleft, neckbendingright);
+    return (65 - meanNeckBending).abs();
 }
   static double calculateTrunkFlexion(Vector2D midknee, Vector2D midhip, Vector2D midshoulder){
     return calculateAngle(midknee, midhip, midshoulder);
@@ -329,7 +328,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     super.initState();
     _initializeClassifier();
     _loadController = TextEditingController(
-    // text: segmentScores["forceLoad"] != null ? segmentScores["forceLoad"].toString() : "",
   );
   }
 
@@ -472,9 +470,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   print('Neck Angle: $neckAngle°');
   
-  _anglesMap[segment] = {
-        "Neck": [neckAngle],
-      };
 
   if (neckAngle >= 10 && neckAngle < 20) {
     neckScore += 1;
@@ -483,29 +478,40 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   }
 
   // 2️⃣ Check for Twisting and Bending (Only Add +1 Once)
-  double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftEye, rightEye);
-  var (neckBendingLeft, neckBendingRight) = PostureCalculator.calculateNeckBending(
+  double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftShoulder, rightShoulder);
+  var neckBend = PostureCalculator.calculateNeckBending(
     leftEar, midShoulder, leftShoulder, rightEar, rightShoulder
   );
 
   
-  print("Neck Bending Left : $neckBendingLeft");
-  print("Neck Bending Right : $neckBendingRight");
-  print("Neck Twisted : $neckTwisted|");
+  print("Neck Bending : $neckBend");
+  // print("Neck Bending Right : $neckBendingRight");
+  print("Neck Twisted : $neckTwisted");
   // If either twisting or bending exists, add only +1
+  // double neckBend = (neckBendingLeft - neckBendingRight).abs();
 
   segmentScores["neckTwisted"] = 0;
   segmentScores["neckBended"] = 0;
 
-  if (neckTwisted >= 5) {
+  if (neckTwisted >= 10) {
     segmentScores["neckTwisted"] = 1;
     }
-  if (neckBendingLeft >= 5 || neckBendingRight >= 5) {
+  if (neckBend>= 10) {
     segmentScores["neckBended"] = 1;
   }
-  if (neckTwisted >= 5 || neckBendingLeft >= 5 || neckBendingRight >= 5) {
+  if (neckTwisted >= 10 || neckBend >= 10) {
     neckScore += 1;
   };
+
+  if (!_anglesMap.containsKey(segment)) {
+  _anglesMap[segment] = {};
+}
+
+// Add Neck Twisting and Bending to the _anglesMap
+  _anglesMap[segment]!["Neck Angle"] = [neckAngle];
+  _anglesMap[segment]!["Neck Twist"] = [neckTwisted];
+  _anglesMap[segment]!["Neck Bending"] = [neckBend];
+
   
   segmentScores["neckScore"] = neckScore;
   print('Total Neck Score: $neckScore');
@@ -530,13 +536,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   } else if (trunkFlexion > 60) {
     trunkScore += 4;
   }
-
-  _anglesMap[segment] = {
-        "Trunk": [trunkFlexion]
-      };
-
  
-
   // 2️⃣ Check for Twisting and Bending (Only Add +1 Once)
   double trunkTwisting = PostureCalculator.calculateTrunkTwisting(
     rightShoulder, midHip, rightHip, leftShoulder, leftHip
@@ -549,20 +549,28 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Trunk Bending Left Angle: $leftBending');
   print('Trunk Bending Right Angle: $rightBending');
 
-  bool isTrunkTwisted = trunkTwisting >= 100;
-  bool isTrunkBending = leftBending <= 85 || leftBending >= 95 || rightBending <= 85 || rightBending >= 95;
-
+  double trunkBend = max(leftBending, rightBending);
   segmentScores["trunkTwisted"] = 0;
   segmentScores["trunkBended"] = 0;
   // Initialize trunkScore
-  if (isTrunkTwisted) {
+  if (trunkTwisting >= 100) {
     segmentScores["trunkTwisted"] = 1;
     trunkScore += 1;
   }
-  if (isTrunkBending) {
+  if (leftBending <= 85 || leftBending >= 95 || rightBending <= 85 || rightBending >= 95) {
     segmentScores["trunkBended"] = 1;
     trunkScore += 1;
   }
+
+  if (!_anglesMap.containsKey(segment)) {
+  _anglesMap[segment] = {};
+}
+
+
+  _anglesMap[segment]!["Trunk Angle"] = [trunkFlexion];
+  _anglesMap[segment]!["Trunk Twist"] = [trunkTwisting];
+  _anglesMap[segment]!["Trunk Bending"] = [trunkBend];
+
 
 
 
@@ -614,6 +622,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   // 7. Locate Upper Arm Position (+1 jika -20 -20, +2 jika -infinite - -20, +2 jika 20-45, +3 jika 45-90, +4 jika 90 - infinite)
   if (segment.toLowerCase() == "upper arm"){
   int upperArmScore = 0;
+  double selectedUpper = 0;
   
 
   var (leftUpperArmAngle, rightupperArmAngle) = PostureCalculator.calculateUpperArmAngle(
@@ -624,9 +633,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Right Upper Arm Angle: $rightupperArmAngle');
 
   if(_selectedSide == "left"){
-    _anglesMap[segment] = {
-      "Upper Arm": [leftUpperArmAngle],
-    };
+    selectedUpper = leftUpperArmAngle;
 
    if (leftUpperArmAngle >= -20 && leftUpperArmAngle <= 20){
       upperArmScore += 1;
@@ -645,9 +652,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     }
   }
   else{
-    _anglesMap[segment] = {
-      "Upper Arm": [rightupperArmAngle],
-    };
+    selectedUpper = rightupperArmAngle;
 
     if (rightupperArmAngle >= -20 && rightupperArmAngle <= 20){
       upperArmScore += 1;
@@ -688,6 +693,16 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     segmentScores['upperArmAbducted'] = 1;
   }
   
+    if (!_anglesMap.containsKey(segment)) {
+  _anglesMap[segment] = {};
+}
+
+
+  _anglesMap[segment]!["Upper Arm Angle"] = [selectedUpper];
+  _anglesMap[segment]!["Shoulder Raised"] = [shoulderraiseddegree];
+  _anglesMap[segment]!["Shoulder Abducted"] = [max(leftUpperArmAbducted, rightUpperArmAbducted)];
+
+
   segmentScores ['upperArmScore'] = upperArmScore;
   print('Total Upper Arm Score: $upperArmScore');
 
@@ -733,6 +748,8 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       lowerArmScore += 2;
     }
   }
+
+  
 
   // Calculate Total Lower Arm Score
   segmentScores ['lowerArmScore'] = lowerArmScore;
@@ -1029,7 +1046,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                         double load = double.tryParse(value) ?? 0;
                         segmentScores["forceLoad"] = (load == 0) ? 0 : (load <= 5) ? 0 : (load <= 10) ? 1 : 2;
                         segmentScores["weight"] = load.toInt();
-                        print(segmentScores);
                       });
                     },
                   ),
@@ -1051,7 +1067,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                         } else {
                           segmentScores["shockAdded"] = 0;
                         }
-                        print(segmentScores);
+                  
                       });
                     },
                   ),
@@ -1283,7 +1299,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                     onChanged: (value) {
                       setState(() {
                         segmentScores["coupling"] = value!;
-                        print(segmentScores["coupling"]);
+                        
                       });
                     },
                   ),
@@ -1493,7 +1509,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
         child: Column(
           children: [
             Text(
-              "If wrist is bent from midline or twisted?",
+              "Is the wrist bent from midline or twisted?",
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
               textAlign: TextAlign.center,
             ),
@@ -1615,6 +1631,627 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     ],
   ),
 ]
+        else if(currentSegment.toLowerCase() == "neck")...[
+           Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                child: Text(
+                  "Take a photo or import an existing image to evaluate posture.",
+                  style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // Image Display Area (with VectorPainter & Angle Measurements)
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Segment: $currentSegment",
+                      style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 10),
+
+                    _capturedImages[currentSegment] != null
+                        ? Column(
+                            children: [
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Image.file(
+                                    _capturedImages[currentSegment]!,
+                                    width: 256,
+                                    height: 256,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  if (_keypointsMap[currentSegment] != null)
+                                    CustomPaint(
+                                      size: Size(256, 256),
+                                      painter: VectorPainter(
+                                        _keypointsMap[currentSegment]!,
+                                        currentSegment,
+                                        0,  // No padding needed
+                                        0,
+                                        _selectedSide,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: 8), // Space between image and text
+
+                              // ✅ Small Angle Measurements Below the Image
+                              if (_anglesMap[currentSegment] != null)
+                                Column(
+                                  children: _anglesMap[currentSegment]!.entries.map((entry) {
+                                    List<double> values = entry.value;
+                                    String formattedText = values.length == 2
+                                        ? "${entry.key}: L ${values[0].toStringAsFixed(2)}° | R ${values[1].toStringAsFixed(2)}°"
+                                        : values.length == 1
+                                            ? "${entry.key}: ${values[0].toStringAsFixed(2)}°"
+                                            : "${entry.key}: No data available";
+
+                                    return Text(
+                                      formattedText,
+                                      style: TextStyle(
+                                        fontSize: 10, // ✅ Small text
+                                        fontFamily: 'Poppins',
+                                        color: Colors.black87,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          )
+                        : Container(
+                            width: 256,
+                            height: 256,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.green, width: 2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "No image captured for $currentSegment",
+                                style: TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins'),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // ✅ Centered Question Box
+             // Checkbox Section with Left & Right Padding
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0), // ✅ Adds balanced left & right padding
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ Left & Right Alignment
+                      children: [
+                        Text("Is the neck twisted?", style: TextStyle(fontSize: 14)),
+                        Checkbox(
+                          value: segmentScores["neckTwisted"] == 1,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              segmentScores["neckTwisted"] = value! ? 1 : 0;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ Left & Right Alignment
+                      children: [
+                        Text("Is the neck bended?", style: TextStyle(fontSize: 14)),
+                        Checkbox(
+                          value: segmentScores["neckBended"] == 1,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              segmentScores["neckBended"] = value! ? 1 : 0;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // ✅ Image Upload Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
+                      child: Text(
+                        'Gallery',
+                        style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
+                      child: Text(
+                        'Scan',
+                        style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // ✅ Navigation Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  children: [
+                    SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.center,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
+                        child: Text(
+                          _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ]
+        else if(currentSegment.toLowerCase() == "trunk")...[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                child: Text(
+                  "Take a photo or import an existing image to evaluate posture.",
+                  style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // Image Display Area (with VectorPainter & Angle Measurements)
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Segment: $currentSegment",
+                      style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 10),
+
+                    _capturedImages[currentSegment] != null
+                        ? Column(
+                            children: [
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Image.file(
+                                    _capturedImages[currentSegment]!,
+                                    width: 256,
+                                    height: 256,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  if (_keypointsMap[currentSegment] != null)
+                                    CustomPaint(
+                                      size: Size(256, 256),
+                                      painter: VectorPainter(
+                                        _keypointsMap[currentSegment]!,
+                                        currentSegment,
+                                        0,  // No padding needed
+                                        0,
+                                        _selectedSide,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: 8), // Space between image and text
+
+                              // ✅ Small Angle Measurements Below the Image
+                              if (_anglesMap[currentSegment] != null)
+                                Column(
+                                  children: _anglesMap[currentSegment]!.entries.map((entry) {
+                                    List<double> values = entry.value;
+                                    String formattedText = values.length == 2
+                                        ? "${entry.key}: L ${values[0].toStringAsFixed(2)}° | R ${values[1].toStringAsFixed(2)}°"
+                                        : values.length == 1
+                                            ? "${entry.key}: ${values[0].toStringAsFixed(2)}°"
+                                            : "${entry.key}: No data available";
+
+                                    return Text(
+                                      formattedText,
+                                      style: TextStyle(
+                                        fontSize: 10, // ✅ Small text
+                                        fontFamily: 'Poppins',
+                                        color: Colors.black87,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          )
+                        : Container(
+                            width: 256,
+                            height: 256,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.green, width: 2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "No image captured for $currentSegment",
+                                style: TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins'),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // ✅ Centered Question Box
+             // Checkbox Section with Left & Right Padding
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0), // ✅ Adds balanced left & right padding
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ Left & Right Alignment
+                      children: [
+                        Text("Is the trunk twisted?", style: TextStyle(fontSize: 14)),
+                        Checkbox(
+                          value: segmentScores["trunkTwisted"] == 1,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              segmentScores["trunkTwisted"] = value! ? 1 : 0;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ Left & Right Alignment
+                      children: [
+                        Text("Is the trunk bended?", style: TextStyle(fontSize: 14)),
+                        Checkbox(
+                          value: segmentScores["trunkBended"] == 1,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              segmentScores["trunkBended"] = value! ? 1 : 0;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // ✅ Image Upload Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
+                      child: Text(
+                        'Gallery',
+                        style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
+                      child: Text(
+                        'Scan',
+                        style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // ✅ Navigation Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  children: [
+                    SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.center,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
+                        child: Text(
+                          _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ]
+        else if(currentSegment.toLowerCase() == "upper arm")...[
+             Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                child: Text(
+                  "Take a photo or import an existing image to evaluate posture.",
+                  style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // Image Display Area (with VectorPainter & Angle Measurements)
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Segment: $currentSegment",
+                      style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(height: 10),
+
+                    _capturedImages[currentSegment] != null
+                        ? Column(
+                            children: [
+                              Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Image.file(
+                                    _capturedImages[currentSegment]!,
+                                    width: 256,
+                                    height: 256,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  if (_keypointsMap[currentSegment] != null)
+                                    CustomPaint(
+                                      size: Size(256, 256),
+                                      painter: VectorPainter(
+                                        _keypointsMap[currentSegment]!,
+                                        currentSegment,
+                                        0,  // No padding needed
+                                        0,
+                                        _selectedSide,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: 8), // Space between image and text
+
+                              // ✅ Small Angle Measurements Below the Image
+                              if (_anglesMap[currentSegment] != null)
+                                Column(
+                                  children: _anglesMap[currentSegment]!.entries.map((entry) {
+                                    List<double> values = entry.value;
+                                    String formattedText = values.length == 2
+                                        ? "${entry.key}: L ${values[0].toStringAsFixed(2)}° | R ${values[1].toStringAsFixed(2)}°"
+                                        : values.length == 1
+                                            ? "${entry.key}: ${values[0].toStringAsFixed(2)}°"
+                                            : "${entry.key}: No data available";
+
+                                    return Text(
+                                      formattedText,
+                                      style: TextStyle(
+                                        fontSize: 10, // ✅ Small text
+                                        fontFamily: 'Poppins',
+                                        color: Colors.black87,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          )
+                        : Container(
+                            width: 256,
+                            height: 256,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.green, width: 2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "No image captured for $currentSegment",
+                                style: TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins'),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // ✅ Centered Question Box
+             // Checkbox Section with Left & Right Padding
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0), // ✅ Adds balanced left & right padding
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ Left & Right Alignment
+                      children: [
+                        Text("Is the shoulder raised", style: TextStyle(fontSize: 14)),
+                        Checkbox(
+                          value: segmentScores['shoulderRaised'] == 1,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              segmentScores['shoulderRaised'] = value! ? 1 : 0;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween, // ✅ Left & Right Alignment
+                      children: [
+                        Text("Is the upper arm abducted?", style: TextStyle(fontSize: 14)),
+                        Checkbox(
+                          value: segmentScores['upperArmAbducted'] == 1,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              segmentScores['upperArmAbducted'] = value! ? 1 : 0;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // ✅ Image Upload Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
+                      child: Text(
+                        'Gallery',
+                        style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
+                      child: Text(
+                        'Scan',
+                        style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // ✅ Navigation Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  children: [
+                    SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.center,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
+                        child: Text(
+                          _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ]
         else if (currentSegment.toLowerCase() == "legs & posture") ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1797,7 +2434,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 20),
+              SizedBox(height: 10),
 
               // ✅ Navigation Buttons
               Padding(
