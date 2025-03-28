@@ -7,6 +7,11 @@ import 'create.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
+
+
 
 // Table A: Neck Scores
 Map<int, Map<int, Map<int, int>>> rebaTableA = {
@@ -128,6 +133,15 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
       scores['trunkScore'] = (scores['trunkScore'] ?? 0) + 1;
     }
 
+    // Legs & Posture Calculation
+
+    if (scores['legRaised'] == 1){
+      scores['legScore'] = (scores['legScore'] ?? 0) + 1;
+    }
+    if (scores['legRaised'] == 2){
+      scores['legScore'] = (scores['legScore'] ?? 0) + 2;
+    }
+
     // Upper Arm Calculation
     if (scores['shoulderRaised'] ==1 ){
       scores['upperArmScore'] = (scores['upperArmScore'] ?? 0) + 1;
@@ -151,7 +165,17 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
       scores['forceLoad'] = (scores['forceLoad'] ?? 0) + 1;
     }
 
+    if (scores['unstableBase'] == 1){
+      scores['activityScore'] = (scores['activityScore'] ?? 0) +1; 
+    }
+    if (scores['staticPosture'] == 1){
+      scores['activityScore'] = (scores['activityScore'] ?? 0) +1; 
+    }
+    if (scores['repeatedAction'] == 1){
+      scores['activityScore'] = (scores['activityScore'] ?? 0) +1; 
+    }
 
+    print(scores);
     int rebaScoreA = getRebaScoreA(scores['neckScore'] ?? 0, scores['legScore'] ?? 0, scores['trunkScore'] ?? 0) + (scores['forceLoad'] ?? 0);
     print('rebascoreA : $rebaScoreA');
     int rebaScoreB = getRebaScoreB(scores['lowerArmScore'] ?? 0, scores['upperArmScore'] ?? 0, scores['wristScore'] ?? 0) + (scores['coupling'] ?? 0);
@@ -182,61 +206,79 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     
   }
 
- void _submitAssessment() async {
+
+Future<File> resizeAndCompressImage(File file) async {
+  Uint8List imageBytes = await file.readAsBytes();
+  img.Image? decodedImage = img.decodeImage(imageBytes);
+
+  if (decodedImage == null) return file; // Return original if decoding fails
+
+  // 🔥 Resize to 256x256 (Maintaining Aspect Ratio)
+  img.Image resizedImage = img.copyResize(decodedImage, width: 256, height: 256);
+
+  // 🔥 Compress to JPEG with 70% quality
+  Uint8List compressedBytes = Uint8List.fromList(img.encodeJpg(resizedImage, quality: 70));
+
+  File compressedFile = File('${file.path}_resized.jpg');
+  await compressedFile.writeAsBytes(compressedBytes);
+  return compressedFile;
+}
+void _submitAssessment() async {
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => Center(child: CircularProgressIndicator()),
+  );
+
   try {
     String userId = FirebaseAuth.instance.currentUser?.uid ?? "anonymous";
-    print('userId: $userId');
-
     String assessmentId = FirebaseFirestore.instance.collection('reba_assessments').doc().id;
-
     String description = _descriptionController.text.trim();
     String title = _titleController.text.trim();
-
-    List<Map<String, dynamic>> images = [];
-
+    
     timestamp = DateTime.now().toIso8601String();
     overallScore = overallScore ?? 0;
+
+    List<Future<Map<String, dynamic>?>> uploadTasks = [];
 
     for (var entry in widget.capturedImages.entries) {
       String segmentKey = entry.key;
       File? imageFile = entry.value;
 
       if (imageFile != null) {
-        try {
-          String? imageUrl =
-              await uploadImageToSupabase(imageFile, userId, assessmentId, segmentKey);
-          if (imageUrl != null) {
-            // ✅ Get keypoints for this image
-            List<Map<String, double>> keypoints = widget.keypoints[segmentKey]
-                    ?.map((kp) => {"x": kp.x, "y": kp.y})
-                    .toList() ??
-                [];
+        uploadTasks.add(() async {
+          try {
+            print('Compressing image for segment: $segmentKey');
+            File compressedImage = await resizeAndCompressImage(imageFile);  // 🔥 Compress the image first
 
-                Map<String, dynamic> imageData = {
-                  "segment": segmentKey,
-                  "url": imageUrl,
-                  "keypoints": keypoints,
-                };
+            print('Uploading compressed image for segment: $segmentKey');
+            String? imageUrl = await uploadImageToSupabase(compressedImage, userId, assessmentId, segmentKey);
+            if (imageUrl != null) {
+              List<Map<String, double>> keypoints = widget.keypoints[segmentKey]
+                      ?.map((kp) => {"x": kp.x, "y": kp.y})
+                      .toList() ?? [];
 
-              //   if (segmentKey == "Wrist") {
-              // List<Map<String, double>> handkeypoints = widget.handkeypoints[segmentKey]
-              //         ?.map((hkp) => {"x": hkp.x, "y": hkp.y})
-              //         .toList() ??
-              //     [];
-              //   if (handkeypoints.isNotEmpty) {
-              //                   imageData["handkeypoints"] = handkeypoints;
-              //                 }
-              //               }
-
-                            images.add(imageData);
-                          }
-                          
-        } catch (e) {
-          print("❌ Error uploading image for segment $segmentKey: $e");
-        }
+              return {
+                "segment": segmentKey,
+                "url": imageUrl,
+                "keypoints": keypoints,
+              };
+            }
+          } catch (e) {
+            print("❌ Error uploading image for segment $segmentKey: $e");
+          }
+          return null;
+        }());
       }
     }
+
+    List<Map<String, dynamic>> images = (await Future.wait(uploadTasks))
+        .where((img) => img != null)
+        .cast<Map<String, dynamic>>()
+        .toList();
+
     Timestamp firestoreTimestamp = Timestamp.fromDate(DateTime.now());
+    
     Map<String, dynamic> assessmentData = {
       'userId': userId,
       'assessmentId': assessmentId,
@@ -246,42 +288,41 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
       'overallScore': overallScore,
       'bodyScores': widget.bodyPartScores,
       'images': images,
-      'rebaScoreA' : rebaScoreA,
-      'rebaScoreB' : rebaScoreB,
-      'rebaScoreC' : rebaScoreC,
+      'rebaScoreA': rebaScoreA,
+      'rebaScoreB': rebaScoreB,
+      'rebaScoreC': rebaScoreC,
     };
 
     print("🚀 Submitting Assessment: $assessmentData");
 
-    await FirebaseFirestore.instance
-        .collection('reba_assessments')
-        .doc(assessmentId)
-        .set(assessmentData)
-        .then((_) => print("✅ Successfully submitted REBA assessment"))
-        .catchError((error) => print("❌ Firestore Write Error: $error"));
+    WriteBatch batch = FirebaseFirestore.instance.batch();
+    DocumentReference docRef = FirebaseFirestore.instance.collection('reba_assessments').doc(assessmentId);
+    batch.set(docRef, assessmentData);
+    await batch.commit();
 
+    print("✅ Successfully submitted REBA assessment");
 
     _descriptionController.clear();
     _titleController.clear();
-    print("✅ Submitted REBA Assessment: $assessmentData");
-    
 
+    Navigator.pop(context); // Close loading indicator
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => HomeScreen()),
     );
   } catch (e, stackTrace) {
+    Navigator.pop(context); // Ensure loading dialog is dismissed
     print("❌ Error submitting assessment: $e");
-    print(stackTrace); // Logs full error trace for debugging
+    print(stackTrace);
   }
 }
+
 
   final Map<String, String> displayBodyPartNames = {
   "neckScore": "Neck Position",
   "trunkScore": "Trunk Position",
   "legScore": "Legs & Posture Position",
   "forceLoad": "Force Load Score",
-  "shockAdded" : "Shock Added",
   "upperArmScore" : "Upper Arm Position",
   "lowerArmScore" : "Lower Arm Position",
   "wristScore" : "Wrist",
@@ -289,174 +330,250 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   "activityScore": "Activity Score",
 };
   
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Asessment Confirmation', style:TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 18))),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-             SizedBox(height: 8),
-              TextField(
+  // Explanations for additional breakdown (only applies to related segment)
+// Define child-to-parent mappings
+final Map<String, String> childToParent = {
+  "neckTwisted": "neckScore",
+  "neckBended": "neckScore",
+  "trunkTwisted": "trunkScore",
+  "trunkBended": "trunkScore",
+  "legRaised": "legScore",
+  "shoulderRaised": "upperArmScore",
+  "upperArmAbducted": "upperArmScore",
+  "armSupport": "upperArmScore",
+  "wristBent": "wristScore",
+  "shockAdded" : "forceLoad",
+  "unstableBase" : "activityScore",
+  "staticPosture" : "activityScore",
+  "repeatedAction" : "activityScore",
+};
+
+final Map<String, String> scoreDescriptions = {
+  "neckTwisted": "+1 Neck Twisted",
+  "neckBended": "+1 Neck Bended",
+  "trunkTwisted": "+1 Trunk Twisted",
+  "trunkBended": "+1 Trunk Bended",
+  "legRaised": "+1 Leg Raised",
+  "shoulderRaised": "+1 Shoulder Raised",
+  "upperArmAbducted": "+1 Upper Arm Abducted",
+  "armSupport": "-1 Arm Support",
+  "wristBent": "+1 Wrist Bent",
+  "shockAdded" : "+1 Shock Added",
+  "unstableBase" : "+1 Unstable Base",
+  "staticPosture" : "+1 Static Posture",
+  "repeatedAction" : "+1 Repeated Action",
+
+};
+
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('Assessment Confirmation', 
+        style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, fontSize: 18)),
+    ),
+    body: SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title & Description Box (Restored)
+            Text("Posture Assessment", 
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+            SizedBox(height: 6),
+            Text("Review the assessment details before submitting.", 
+              style: TextStyle(fontSize: 14, fontFamily: 'Poppins', color: Colors.grey[600])),
+            SizedBox(height: 20),
+
+            TextField(
                 controller: _titleController,
                 decoration: InputDecoration(
-                labelText: "Enter Title",
-                labelStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey),
+                  labelText: "Enter Title",
+                  labelStyle: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700], 
+                  ),
+                  filled: true,
+                  fillColor: Colors.white, // Keep background white
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!, width: 1), // Soft grey border
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.blueAccent, width: 2), // Highlight when focused
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-            ),
 
               SizedBox(height:10),
               TextField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
                   labelText: "Enter Description",
-                   labelStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.grey),
-                ),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  labelStyle: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.blueAccent, width: 2),
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
                 maxLines: 3,
               ),
-          SizedBox(height: 20),
-          Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
+            
+             SizedBox(height:20),
+
+            // List of Body Parts
+            ...widget.bodyPartScores.entries.map((entry) {
+              String bodyPartKey = entry.key;
+              int score = entry.value;
+
+              // Skip if not in displayBodyPartNames
+              if (!displayBodyPartNames.containsKey(bodyPartKey)) return SizedBox();
+
+              // Get body part name
+              String bodyPart = displayBodyPartNames[bodyPartKey]!;
+              String? relatedSegment = bodyPartToSegment[bodyPartKey];
+              File? imageFile = relatedSegment != null ? widget.capturedImages[relatedSegment] : null;
+
+              // Collect descriptions only for this segment
+              List<String> additionalDescriptions = [];
+              widget.bodyPartScores.forEach((key, value) {
+                if (childToParent[key] == bodyPartKey && value != 0) {
+                  additionalDescriptions.add(scoreDescriptions[key]!);
+                }
+              });
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Left Section (Image + Body Part Name + Additional Info)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Main Body Part Name
+                        Text(
+                          bodyPart, 
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+                        ),
+                        SizedBox(height: 4),
+
+                        // Image (if exists)
+                        if (imageFile != null && imageFile.existsSync())
+                          ClipRRect(
+                            child: Image.file(imageFile, width: 100, height: 80, fit: BoxFit.cover),
+                          ),
+                        
+                        // Additional Information (small text, only for this segment)
+                        if (additionalDescriptions.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: additionalDescriptions.map((desc) => 
+                                Text(
+                                  "• $desc", 
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600], fontFamily: 'Poppins'),
+                                ),
+                              ).toList(),
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    SizedBox(width: 16), 
+                    Spacer(), 
+
+                    // Score Box (Right Side)
+                    Column(
+                      children: [
+                        Container(
+                          width: 60,
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Color.fromRGBO(235, 237, 240, 1),
+                          ),
+                          child: Center(
+                            child: Text(
+                              "$score",
+                              style: TextStyle(fontSize: 14, fontFamily:'Poppins', fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 4), 
+                        Text(
+                          "Score",
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, fontFamily: 'Poppins'),
+                        ),
+                      ],
+                    ),
+                    SizedBox(width: 10),
+                  ],
+                ),
+              );
+            }).where((widget) => widget is! SizedBox).toList(),
+
+            SizedBox(height: 20),
+            Center(
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Color.fromRGBO(235, 237, 240, 1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "$overallScore",
+                      style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "REBA Score",
+                    style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 20),
+            Center(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                onPressed: _submitAssessment,
                 child: Text(
-                  "REBA Results Analysis",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                  "Submit Assessment", 
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
                 ),
               ),
             ),
-             SizedBox(height: 20),
-
-          ...widget.bodyPartScores.entries.map((entry) {
-            String bodyPartKey = entry.key;
-            int score = entry.value;
-            if (bodyPartKey == "staticPosture" || bodyPartKey == "repeatedAction" || bodyPartKey == "armSupport") return SizedBox();
-
-            // Get display name, fallback to original key if not found
-            String bodyPart = displayBodyPartNames[bodyPartKey] ?? bodyPartKey;
-            String? relatedSegment = bodyPartToSegment[bodyPartKey];
-            File? imageFile = relatedSegment != null ? widget.capturedImages[relatedSegment] : null;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Left Section (Image or Body Part Name)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        bodyPart, // Always show body part name
-                        style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Poppins',
-                      ),
-                      ),
-                      SizedBox(height: 6),
-                      if (imageFile != null && imageFile.existsSync())
-                        ClipRRect(
-                          // borderRadius: BorderRadius.circular(10),
-                          child: Image.file(imageFile, width: 100, height: 80, fit: BoxFit.cover),
-                        ),
-                    ],
-                  ),
-
-                  SizedBox(width: 16), // Add space between image/text and score box
-                  Spacer(), // Push score box to the right
-
-                  // Score Box (Right Side)
-                  Column(
-                    children: [
-                      Container(
-                        width: 60,
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Color.fromRGBO(235, 237, 240, 1),
-                          // borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Center(
-                          child: Text(
-                            "$score",
-                            style: TextStyle(fontSize: 14, fontFamily:'Poppins', fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 4), // Space between box and "Score" text
-                      Text(
-                        "Score",
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'Poppins',
-                          ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(width: 10), // Slight gap on the right side
-                ],
-              ),
-            );
-          }).toList(),
-
-              // Overall REBA Score (Centered)
-              SizedBox(height: 20),
-              Center(
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Color.fromRGBO(235, 237, 240, 1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        "$overallScore",
-                        style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      "REBA Score",
-                      style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-
-
-              SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromRGBO(55, 149, 112, 1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                // padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              ),
-                  onPressed: _submitAssessment,
-                  child: Text("Submit Assessment", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins')),
-                ),
-              ),
-              SizedBox(height: 20),
-            ],
-          ),
+            SizedBox(height: 20),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

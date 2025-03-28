@@ -525,11 +525,11 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   double trunkFlexion = 180.0 - PostureCalculator.calculateTrunkFlexion(virtualY, midHip, midShoulder);
   print('Trunk Flexion Angle: $trunkFlexion');
 
-   if (trunkFlexion == 0) {
+   if (trunkFlexion >= -5 && trunkFlexion <= 5) {
     trunkScore += 1;
-  } else if (trunkFlexion < 0) {
+  } else if (trunkFlexion < -5) {
     trunkScore += 2;
-  } else if (trunkFlexion > 0 && trunkFlexion <= 20) {
+  } else if (trunkFlexion > 5 && trunkFlexion <= 20) {
     trunkScore += 2;
   } else if (trunkFlexion > 20 && trunkFlexion <= 60) {
     trunkScore += 3;
@@ -603,17 +603,14 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('RLeg Angle $rightLegs');
   
     
-  if (legs <=5 && legs >=-5){
-    legScore += 1;
-  } else if (legs >5){
-    legScore +=2;
-  } else if (legs >=30 && legs<=60){
+  if (legs >=30 && legs<=60){
     legScore +=1;
   } else if (legs >60){
     legScore +=2;
   }
 
     // Calculate Total Legs Score 
+    segmentScores['legRaised'] = 1;
     segmentScores['legScore'] = legScore;
     print('Total Leg Score : $legScore');
   }
@@ -688,6 +685,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Left Upper Arm Abducted : $leftUpperArmAbducted');
   print('Right Upper Arm Abducted : $rightUpperArmAbducted');
   segmentScores['upperArmAbducted'] = 0;
+  segmentScores['armSupport'] = 0;
   if (max(leftUpperArmAbducted, rightUpperArmAbducted) >=110){
     // upperArmScore +=1;
     segmentScores['upperArmAbducted'] = 1;
@@ -756,7 +754,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Total Lower Arm Score: $lowerArmScore');
 
   }
-
   // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
 
     if (segment.toLowerCase() == 'wrist'){
@@ -776,6 +773,12 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       }
       segmentScores['wristScore'] = wristScore;
       print('Total Wrist Score: $wristScore');
+      segmentScores['activityScore'] = 0;
+      segmentScores['unstableBase'] = 0;
+      segmentScores['staticPosture'] = 0;
+      segmentScores['repeatedAction'] = 0;
+      segmentScores['coupling'] = 0;
+      
     }
     }
 
@@ -799,6 +802,8 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
         _currentStep++;
       });
     } else {
+    print(segmentScores);
+    print('sdssssssssssss');
     // Navigate to the REBA report screen when reaching the last segment
     Navigator.push(
       context,
@@ -1082,7 +1087,30 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                         ),
                         padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                       ),
-                      onPressed: _nextSegment,
+                      onPressed: (){
+                        if (_loadController.text.isEmpty || double.tryParse(_loadController.text) == null) {
+                          // Show alert if input is empty or invalid
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                title: Text("Input Required"),
+                                content: Text("Please enter a valid Force/Load (kg) before proceeding."),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop(); // Close dialog
+                                    },
+                                    child: Text("OK"),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        } else {
+                          _nextSegment();
+                        }
+                      },
                       child: Text(
                         'Next',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
@@ -1325,127 +1353,131 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
             ),
           ),
         ]
-        else if (currentSegment.toLowerCase() == "activity score") ...[
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Grey Background Box with Centered Image
-                  Container(
-                    height: 250,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Color.fromRGBO(244, 246, 245, 1),
-                      borderRadius: BorderRadius.circular(12),
+       else if (currentSegment.toLowerCase() == "activity score") ...[
+        Expanded(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Grey Background Box with Centered Image
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Color.fromRGBO(244, 246, 245, 1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      'assets/activity_score.png',
+                      height: 100,
+                      fit: BoxFit.contain,
                     ),
-                    child: Center(
-                      child: Image.asset(
-                        'assets/activity_score.png', // Update with actual path
-                        height: 100,
-                        fit: BoxFit.contain,
-                      ),
+                  ),
+                ),
+                SizedBox(height: 10),
+
+                // Centered Text Below the Image
+                Text(
+                  "Activity Score",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 15),
+
+                // Condition 1
+                Text(
+                  "1 or more body parts are held for longer than 1 minute (static)",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+                ),
+                CheckboxListTile(
+                  title: Text("Yes (+1)", style: TextStyle(fontFamily: 'Poppins')),
+                  value: segmentScores["staticPosture"] == 1,
+                  activeColor: Color.fromRGBO(55, 149, 112, 1),
+                  onChanged: (bool? value) {
+                    setState(() {
+                      segmentScores["staticPosture"] = value! ? 1 : 0;
+                    });
+                  },
+                ),
+                SizedBox(height: 10),
+
+                // Condition 2
+                Text(
+                  "Repeated small range actions (more than 4x per minute)",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+                ),
+                CheckboxListTile(
+                  title: Text("Yes (+1)", style: TextStyle(fontFamily: 'Poppins')),
+                  activeColor: Color.fromRGBO(55, 149, 112, 1),
+                  value: segmentScores["repeatedAction"] == 1,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      segmentScores["repeatedAction"] = value! ? 1 : 0;
+                    });
+                  },
+                ),
+                SizedBox(height: 10),
+
+                // Condition 3
+                Text(
+                  "Action causes rapid large range changes in postures or unstable base",
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
+                ),
+                CheckboxListTile(
+                  title: Text("Yes (+1)", style: TextStyle(fontFamily: 'Poppins')),
+                  activeColor: Color.fromRGBO(55, 149, 112, 1),
+                  value: segmentScores["unstableBase"] == 1,
+                  onChanged: (bool? value) {
+                    setState(() {
+                      segmentScores["unstableBase"] = value! ? 1 : 0;
+                    });
+                  },
+                ),
+                SizedBox(height: 20),
+
+                // Confirm & Review Button
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                   ),
-                  SizedBox(height: 10),
-
-                  // Centered Text Below the Image
-                  Text(
-                    "Activity Score",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 15),
-
-                  // Condition 1
-                  Text(
-                    "1 or more body parts are held for longer than 1 minute (static)",
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
-                  ),
-                  CheckboxListTile(
-                    title: Text("Yes (+1)", style:TextStyle(fontFamily: 'Poppins'),),
-                    value: segmentScores["staticPosture"] == 1,
-                    activeColor: Color.fromRGBO(55, 149, 112, 1),
-                    onChanged: (bool? value) {
-                      setState(() {
-                        segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + (value! ? 1 : -1);
-                        segmentScores["staticPosture"] = value ? 1 : 0;
-                      });
-                    },
-                  ),
-                  SizedBox(height: 10),
-
-                  // Condition 2
-                  Text(
-                    "Repeated small range actions (more than 4x per minute)",
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
-                  ),
-                  CheckboxListTile(
-                    title: Text("Yes (+1)", style:TextStyle(fontFamily: 'Poppins')),
-                    activeColor: Color.fromRGBO(55, 149, 112, 1),
-                    value: segmentScores["repeatedAction"] == 1,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + (value! ? 1 : -1);
-                        segmentScores["repeatedAction"] = value ? 1 : 0;
-                      });
-                    },
-                  ),
-                  SizedBox(height: 10),
-
-                  // Condition 3
-                  Text(
-                    "Action causes rapid large range changes in postures or unstable base",
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
-                  ),
-                  CheckboxListTile(
-                    title: Text("Yes (+1)", style:TextStyle(fontFamily: 'Poppins')),
-                    activeColor: Color.fromRGBO(55, 149, 112, 1),
-                    value: segmentScores["unstableBase"] == 1,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        segmentScores["activityScore"] = (segmentScores["activityScore"] ?? 0) + (value! ? 1 : -1);
-                        segmentScores["unstableBase"] = value ? 1 : 0;
-                      });
-                    },
-                  ),
-                  SizedBox(height: 20),
-
-                  // Confirm & Review Button
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Color.fromRGBO(55, 149, 112, 1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                  onPressed: () {
+                    // Navigate without calculating activityScore
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RebaReportScreen(
+                          bodyPartScores: segmentScores,
+                          capturedImages: _capturedImages,
+                          keypoints: _keypointsMap,
                         ),
-                        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                       ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RebaReportScreen(
-                            bodyPartScores: segmentScores,
-                            capturedImages: _capturedImages,
-                            keypoints: _keypointsMap,
-                            // handkeypoints: _handKeypoints,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Text("Confirm & Review Assessment", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins')),
-                  ),
-                ],
-              ),
+                    );
+                  },
+                  child: Text("Confirm & Review Assessment",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontFamily: 'Poppins')),
+                ),
+              ],
             ),
           ),
-        ]
+        ),
+      ]
+
+
         else if (currentSegment.toLowerCase() == "wrist" && _showSelectionUI) ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
