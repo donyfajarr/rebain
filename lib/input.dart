@@ -499,9 +499,9 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   if (neckBend>= 10) {
     segmentScores["neckBended"] = 1;
   }
-  if (neckTwisted >= 10 || neckBend >= 10) {
-    neckScore += 1;
-  };
+  // if (neckTwisted >= 10 || neckBend >= 10) {
+    // neckScore += 1;
+  // };
 
   if (!_anglesMap.containsKey(segment)) {
   _anglesMap[segment] = {};
@@ -555,11 +555,11 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   // Initialize trunkScore
   if (trunkTwisting >= 100) {
     segmentScores["trunkTwisted"] = 1;
-    trunkScore += 1;
+    // trunkScore += 1;
   }
   if (leftBending <= 85 || leftBending >= 95 || rightBending <= 85 || rightBending >= 95) {
     segmentScores["trunkBended"] = 1;
-    trunkScore += 1;
+    // trunkScore += 1;
   }
 
   if (!_anglesMap.containsKey(segment)) {
@@ -678,7 +678,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   segmentScores['shoulderRaised'] = 0;
   if (shoulderraiseddegree >=30){
-   upperArmScore +=1;
+  //  upperArmScore +=1;
    segmentScores['shoulderRaised'] = 1;
   }
 
@@ -689,7 +689,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Right Upper Arm Abducted : $rightUpperArmAbducted');
   segmentScores['upperArmAbducted'] = 0;
   if (max(leftUpperArmAbducted, rightUpperArmAbducted) >=110){
-    upperArmScore +=1;
+    // upperArmScore +=1;
     segmentScores['upperArmAbducted'] = 1;
   }
   

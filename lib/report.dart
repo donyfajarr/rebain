@@ -114,7 +114,44 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   };
 
   Map<String, int> calculateOverallScore(Map<String, int> scores) {
-    // print(scores['neckScore']);
+    // Neck Calculation
+    if (scores['neckTwisted'] == 1 || scores['neckBended'] == 1) {
+      scores['neckScore'] = (scores['neckScore'] ?? 0) + 1;
+    }
+
+    // Trunk Calculation
+    if (scores['trunkTwisted'] == 1){
+      scores['trunkScore'] = (scores['trunkScore'] ?? 0) + 1;
+    };
+
+    if (scores['trunkBended'] == 1){
+      scores['trunkScore'] = (scores['trunkScore'] ?? 0) + 1;
+    }
+
+    // Upper Arm Calculation
+    if (scores['shoulderRaised'] ==1 ){
+      scores['upperArmScore'] = (scores['upperArmScore'] ?? 0) + 1;
+    }
+
+    if (scores['upperArmAbducted'] == 1){
+      scores['upperArmScore'] = (scores['upperArmScore'] ?? 0) + 1;
+    }
+
+    if (scores['armSupport'] == -1){
+      scores['upperArmScore'] = (scores['upperArmScore'] ?? 0) -1;
+    }
+
+    // Wrist Calculation
+    if (scores['wristBent'] == 1){
+      scores['wristScore'] = (scores['wristScore'] ?? 0) + 1;
+    }
+
+    // Force Load Calculation
+    if (scores['shockAdded'] == 1){
+      scores['forceLoad'] = (scores['forceLoad'] ?? 0) + 1;
+    }
+
+
     int rebaScoreA = getRebaScoreA(scores['neckScore'] ?? 0, scores['legScore'] ?? 0, scores['trunkScore'] ?? 0) + (scores['forceLoad'] ?? 0);
     print('rebascoreA : $rebaScoreA');
     int rebaScoreB = getRebaScoreB(scores['lowerArmScore'] ?? 0, scores['upperArmScore'] ?? 0, scores['wristScore'] ?? 0) + (scores['coupling'] ?? 0);
