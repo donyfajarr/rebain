@@ -86,15 +86,16 @@ class AssessmentDetailsPage extends StatelessWidget {
     );
   }
 
-Future<Uint8List> downloadImage(String imageUrl) async {
-  final response = await http.get(Uri.parse(imageUrl));
-  if (response.statusCode == 200) {
-    return response.bodyBytes;
-  } else {
-    throw Exception("Failed to load image");
+  Future<Uint8List> downloadImage(String imageUrl) async {
+    final response = await http.get(Uri.parse(imageUrl));
+    if (response.statusCode == 200) {
+      return response.bodyBytes;
+    } else {
+      throw Exception("Failed to load image");
+    }
   }
-}
-Future<void> generatePdf(Map<String, dynamic> data) async {
+
+  Future<void> generatePdf(Map<String, dynamic> data) async {
   final pdf = pw.Document();
   print('test data : $data');
   DateTime timestampDate = (data['timestamp'] as Timestamp).toDate();
@@ -189,71 +190,109 @@ pw.Widget _buildSection(String title) {
   );
 }
 
-Future<pw.Widget> _buildImageScoreTable(List<Map<String, dynamic>> images, Map<String, dynamic> scores, Map<String, String> segmentMapping) async {
+Future<pw.Widget> _buildImageScoreTable(
+  List<Map<String, dynamic>> images,
+  Map<String, dynamic> scores,
+  Map<String, String> segmentMapping,
+) async {
   return pw.Table(
-    border: pw.TableBorder.all(),
+    border: pw.TableBorder.all(), // ✅ Restored table border
     columnWidths: {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(1)},
     children: [
+      // Table Header
       pw.TableRow(
         decoration: pw.BoxDecoration(color: PdfColors.grey200),
         children: [
-          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Segment", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-        ],
-      ),
-      for (var entry in segmentMapping.entries)
-        pw.TableRow(children: [
           pw.Padding(
             padding: pw.EdgeInsets.all(8),
-            child: pw.Column(
-              children: [
-                pw.Text(entry.key),
-                if (images.any((img) => img['segment'] == entry.key))
-                  await _drawKeypointsOnImage(images.firstWhere((img) => img['segment'] == entry.key)),
-              ],
-            ),
+            child: pw.Text("Segment", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
           ),
-          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text((scores[entry.value] as num?)?.toInt()?.toString() ?? "-")),
-        ]),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+
+      // Table Content
+      for (var entry in segmentMapping.entries)
+        pw.TableRow(
+          children: [
+            // Left Column: Image + Segment Name + Extra Text
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(entry.key, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 4),
+
+                  // Image (unchanged)
+                  if (images.any((img) => img['segment'] == entry.key))
+                    await _drawKeypointsOnImage(images.firstWhere((img) => img['segment'] == entry.key)),
+
+                  // Additional descriptions below image
+                  if (childToParent.containsValue(entry.value)) ...[
+                    pw.SizedBox(height: 4),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: childToParent.entries
+                          .where((e) => e.value == entry.value && scores[e.key] == 1)
+                          .map((e) => pw.Text(
+                                scoreDescriptions[e.key] ?? '',
+                                style: pw.TextStyle(fontSize: 10, color: PdfColors.redAccent),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Right Column: Score
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Text((scores[entry.value] as num?)?.toInt()?.toString() ?? "-", textAlign: pw.TextAlign.center),
+            ),
+          ],
+        ),
     ],
   );
 }
 
 Future<pw.Widget> _drawKeypointsOnImage(Map<String, dynamic> imageData) async {
   Uint8List imageBytes = await downloadImage(imageData['url'].toString());
-List<Map<String, dynamic>> keypoints = 
+  List<Map<String, dynamic>> keypoints = 
     (imageData['keypoints'] as List<dynamic>)
         .map((point) => (point as Map<dynamic, dynamic>).map(
               (key, value) => MapEntry(key.toString(), value),
             ))
         .toList();
-  return pw.Container(
-    width: 100,
-    height: 100,
-    child: pw.Stack(
-      children: [
-        pw.Image(pw.MemoryImage(imageBytes), width: 100, height: 100, fit: pw.BoxFit.cover),
-        for (var point in keypoints)
-          pw.Positioned(
-            left: (point['x'] as num).toDouble() * 100,
-            top: (point['y'] as num).toDouble() * 100,
-            child: pw.SizedBox(
-  width: 4,
-  height: 4,
-  child: pw.Container(
-    decoration: pw.BoxDecoration(
-      color: PdfColors.red,
-      shape: pw.BoxShape.circle,
-    ),
-  ),
-),
-          ),
-      ],
-    ),
-  );
-}
-
-
+    return pw.Container(
+      width: 100,
+      height: 100,
+      child: pw.Stack(
+        children: [
+          pw.Image(pw.MemoryImage(imageBytes), width: 100, height: 100, fit: pw.BoxFit.cover),
+          for (var point in keypoints)
+            pw.Positioned(
+              left: (point['x'] as num).toDouble() * 100,
+              top: (point['y'] as num).toDouble() * 100,
+              child: pw.SizedBox(
+                        width: 4,
+                        height: 4,
+                        child: pw.Container(
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.red,
+                            shape: pw.BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                              ),
+          ],
+        ),
+      );
+  }
 
 
 pw.Widget _buildScoreRow(String title, int? score) {
@@ -290,7 +329,7 @@ pw.Widget _buildCenteredScore(String title, int? score, {bool emphasized = false
   );
 }
 
-// Helper function to determine risk category
+
 String _getRiskCategory(int score) {
   if (score == 1) return 'Negligible Risk';
   if (score >= 2 && score <= 3) return 'Low Risk. Change may be needed';
@@ -300,7 +339,7 @@ String _getRiskCategory(int score) {
 }
 
 // Helper function to build score rows
-  final Map<String, String> scoreMapping = {
+final Map<String, String> scoreMapping = {
     "Neck": "neckScore",
     "Trunk": "trunkScore",
     "Legs & Posture": "legScore",
@@ -312,6 +351,39 @@ String _getRiskCategory(int score) {
     "Coupling Score": "coupling",
     "Activity Score": "activityScore",
   };
+
+final Map<String, String> childToParent = {
+  "neckTwisted": "neckScore",
+  "neckBended": "neckScore",
+  "trunkTwisted": "trunkScore",
+  "trunkBended": "trunkScore",
+  "legRaised": "legScore",
+  "shoulderRaised": "upperArmScore",
+  "upperArmAbducted": "upperArmScore",
+  "armSupport": "upperArmScore",
+  "wristBent": "wristScore",
+  "shockAdded" : "forceLoad",
+  "unstableBase" : "activityScore",
+  "staticPosture" : "activityScore",
+  "repeatedAction" : "activityScore",
+};
+
+final Map<String, String> scoreDescriptions = {
+  "neckTwisted": "+1 Neck Twisted",
+  "neckBended": "+1 Neck Bended",
+  "trunkTwisted": "+1 Trunk Twisted",
+  "trunkBended": "+1 Trunk Bended",
+  "legRaised": "+1 Leg Raised",
+  "shoulderRaised": "+1 Shoulder Raised",
+  "upperArmAbducted": "+1 Upper Arm Abducted",
+  "armSupport": "-1 Arm Support",
+  "wristBent": "+1 Wrist Bent",
+  "shockAdded" : "+1 Shock Added",
+  "unstableBase" : "+1 Unstable Base",
+  "staticPosture" : "+1 Static Posture",
+  "repeatedAction" : "+1 Repeated Action",
+
+};
 
 @override
 Widget build(BuildContext context) {
@@ -428,7 +500,6 @@ Widget build(BuildContext context) {
   }
 
   Widget _buildAnalysisSection(String title, List<String> segments, Map<String, dynamic> data) {
-    
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -447,33 +518,40 @@ Widget build(BuildContext context) {
 
       Column(
         children: segments.map((segment) {
-          // print(data['images']);
-          // print('oi');
           var imageData = (data['images'] as List<dynamic>?)
               ?.firstWhere((img) => img['segment'] == segment, orElse: () => null);
-          print('Segment: ${imageData?['segment']}');
-          print('Keypoints: ${imageData?['keypoints']}');
 
           List<Keypoint> keypoints = [];
-          if (imageData != null && imageData is Map<String, dynamic> &&
-              imageData.containsKey('keypoints') && imageData['keypoints'] is List<dynamic>) {
+          if (imageData != null &&
+              imageData is Map<String, dynamic> &&
+              imageData.containsKey('keypoints') &&
+              imageData['keypoints'] is List<dynamic>) {
             keypoints = (imageData['keypoints'] as List<dynamic>)
                 .map((point) => Keypoint(
-                      (point['x'] as num).toDouble(), 
-                      (point['y'] as num).toDouble(), 
-                      0.1 // Default confidence value
+                      (point['x'] as num).toDouble(),
+                      (point['y'] as num).toDouble(),
+                      0.1, // Default confidence value
                     ))
                 .toList();
           }
 
           String scoreKey = scoreMapping[segment] ?? "";
           String score = data['bodyScores']?[scoreKey]?.toString() ?? "-";
-          
+
+          // ✅ Collect additional text based on conditions
+          List<String> extraInfo = [];
+          childToParent.forEach((key, parent) {
+            if (data['bodyScores'][key] == 1 && parent == scoreKey) {
+              extraInfo.add(scoreDescriptions[key] ?? '');
+            }
+          });
+
           return Padding(
             padding: EdgeInsets.symmetric(vertical: 8.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                // Image and keypoints (stays on the left)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -504,15 +582,15 @@ Widget build(BuildContext context) {
                                     height: 100,
                                   ),
                                 ),
-                                Positioned.fill(  // Ensure the painter is on top
+                                Positioned.fill(
                                   child: CustomPaint(
                                     size: Size(100, 100),
                                     painter: VectorPainter(
                                       keypoints,
                                       segment,
-                                      0, // Adjust if needed
                                       0,
-                                      null // Adjust if needed
+                                      0,
+                                      null,
                                     ),
                                   ),
                                 ),
@@ -520,9 +598,27 @@ Widget build(BuildContext context) {
                             )
                           : Icon(Icons.image_not_supported),
                     ),
+                    if (extraInfo.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start, // ✅ Left-align text below image
+                        children: extraInfo.map((text) => Text(
+                              text,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'Poppins',
+                                color: Colors.redAccent,
+                              ),
+                            )).toList(),
+                      ),
+                    ],
                   ],
                 ),
+
                 SizedBox(width: 12),
+
+                // Score box remains on the far right
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerRight,
@@ -537,11 +633,14 @@ Widget build(BuildContext context) {
                           ),
                           child: Text(
                             score,
-                            style: TextStyle(fontSize: 14, fontFamily:'Poppins', fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         SizedBox(height: 4),
-
                         Text(
                           'Score',
                           style: TextStyle(
@@ -560,12 +659,11 @@ Widget build(BuildContext context) {
           );
         }).toList(),
       ),
+
+      SizedBox(height: 10),
     ],
-    
   );
-
 }
-
 
   Widget _buildOtherScores(List<String> labels, Map<String, dynamic> data) {
     return Padding(
@@ -575,13 +673,22 @@ Widget build(BuildContext context) {
         children: labels.map((label) {
           String scoreKey = scoreMapping[label] ?? "";
           String score = data['bodyScores']?[scoreKey]?.toString() ?? "-";
+          List<String> extraInfo = [];
+          childToParent.forEach((key, parent) {
+            if (data['bodyScores'][key] == 1 && parent == scoreKey) {
+              extraInfo.add(scoreDescriptions[key] ?? '');
+            }
+          });
+
           return Padding(
             padding: EdgeInsets.symmetric(vertical: 6.0),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-              Expanded(
-                child: Text(
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children : [
+                  Text(
                   label,
                   style: TextStyle(
                     fontSize: 16,
@@ -589,40 +696,94 @@ Widget build(BuildContext context) {
                     fontFamily: 'Poppins',
                   ),
                 ),
+                SizedBox(height:4),
+                if (extraInfo.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start, // ✅ Left-align text below image
+                        children: extraInfo.map((text) => Text(
+                              text,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'Poppins',
+                                color: Colors.redAccent,
+                              ),
+                            )).toList(),
+                      ),
+                    ],
+                ],
               ),
+              
               SizedBox(width: 12),
 
               // Wrap the score box and text in a Column
-              Column(
-                children: [
-                  Container(
-                    width: 60,
-                    padding: EdgeInsets.all(12),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Color.fromRGBO(235, 237, 240, 1),
-                    ),
-                    child: Text(
-                      score,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w700,
-                      ),
+              // Column(
+              //   children: [
+              //     Container(
+              //       width: 60,
+              //       padding: EdgeInsets.all(12),
+              //       alignment: Alignment.center,
+              //       decoration: BoxDecoration(
+              //         color: Color.fromRGBO(235, 237, 240, 1),
+              //       ),
+              //       child: Text(
+              //         score,
+              //         style: TextStyle(
+              //           fontSize: 14,
+              //           fontFamily: 'Poppins',
+              //           fontWeight: FontWeight.w700,
+              //         ),
+              //       ),
+              //     ),
+              //     SizedBox(height: 4),
+              //     Text(
+              //       'Score',
+              //       style: TextStyle(
+              //         fontSize: 12,
+              //         fontWeight: FontWeight.w500,
+              //         fontFamily: 'Poppins',
+              //       ),
+              //       textAlign: TextAlign.center,
+              //     ),
+              //   ],
+              // ),
+              
+              Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 60,
+                          padding: EdgeInsets.all(12),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Color.fromRGBO(235, 237, 240, 1),
+                          ),
+                          child: Text(
+                            score,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontFamily: 'Poppins',
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Score',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            fontFamily: 'Poppins',
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Score',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Poppins',
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+                ),
               ],
             ),
           );
@@ -631,143 +792,140 @@ Widget build(BuildContext context) {
     );
   }
 
-Widget _buildScoreABox() {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 16),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Center(
-          child: Container(
-            width: 100,
-            height: 60,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Color.fromRGBO(235, 237, 240, 1), 
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              data['rebaScoreA'].toString(),
-              style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        SizedBox(height: 8), // Space between box and text
-        Center(
-          child: Text(
-            'REBA Score A', 
-            style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
-          ),
-        ),
-        SizedBox(height: 8), // Space before the line
-        Divider(thickness: 2, color: Colors.black54), // Full-width line
-      ],
-    ),
-  );
-}
-
-
-
- Widget _buildScoreBBox() {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 16),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Center(
-          child: Container(
-            width: 100,
-            height: 60,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Color.fromRGBO(235, 237, 240, 1), 
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              data['rebaScoreB'].toString(),
-              style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        SizedBox(height: 8), // Space between box and text
-        Center(
-          child: Text(
-            'REBA Score B', 
-            style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
-          ),
-        ),
-        SizedBox(height: 8), // Space before the line
-        Divider(thickness: 2, color: Colors.black54), // Full-width line
-      ],
-    ),
-  );
-}
-
-
- Widget _buildScoreCBox() {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 16),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Center(
-          child: Container(
-            width: 100,
-            height: 60,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Color.fromRGBO(235, 237, 240, 1), 
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              data['rebaScoreC'].toString(),
-              style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        SizedBox(height: 8), // Space between box and text
-        Center(
-          child: Text(
-            'REBA Score C', 
-            style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
-          ),
-        ),
-        SizedBox(height: 8), // Space before the line
-        Divider(thickness: 2, color: Colors.black54), // Full-width line
-      ],
-    ),
-  );
-}
-
- Widget _buildScoreBox() {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 16),
-    child: Center(
+  Widget _buildScoreABox() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 150,
-            height: 80,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: Colors.grey[300], 
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              data['overallScore'].toString(),
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Center(
+            child: Container(
+              width: 100,
+              height: 60,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Color.fromRGBO(235, 237, 240, 1), 
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                data['rebaScoreA'].toString(),
+                style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+              ),
             ),
           ),
           SizedBox(height: 8), // Space between box and text
-          Text(
-            'Total REBA Score', 
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          Center(
+            child: Text(
+              'REBA Score A', 
+              style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+            ),
           ),
+          SizedBox(height: 8), // Space before the line
+          Divider(thickness: 2, color: Colors.black54), // Full-width line
         ],
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Widget _buildScoreBBox() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 100,
+              height: 60,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Color.fromRGBO(235, 237, 240, 1), 
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                data['rebaScoreB'].toString(),
+                style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          SizedBox(height: 8), // Space between box and text
+          Center(
+            child: Text(
+              'REBA Score B', 
+              style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+            ),
+          ),
+          SizedBox(height: 8), // Space before the line
+          Divider(thickness: 2, color: Colors.black54), // Full-width line
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScoreCBox() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Center(
+            child: Container(
+              width: 100,
+              height: 60,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Color.fromRGBO(235, 237, 240, 1), 
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                data['rebaScoreC'].toString(),
+                style: TextStyle(fontFamily: 'Poppins',fontSize: 20, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+          SizedBox(height: 8), // Space between box and text
+          Center(
+            child: Text(
+              'REBA Score C', 
+              style: TextStyle(fontFamily: 'Poppins',fontSize: 16),
+            ),
+          ),
+          SizedBox(height: 8), // Space before the line
+          Divider(thickness: 2, color: Colors.black54), // Full-width line
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScoreBox() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 150,
+              height: 80,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: Colors.grey[300], 
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                data['overallScore'].toString(),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(height: 8), // Space between box and text
+            Text(
+              'Total REBA Score', 
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
 }
