@@ -180,7 +180,6 @@ class AssessmentDetailsPage extends StatelessWidget {
   await Share.shareXFiles([XFile(file.path)], text: "Download your REBA Report");
 }
 
-
 pw.Widget _buildSection(String title) {
   return pw.Padding(
     padding: pw.EdgeInsets.symmetric(vertical: 10),
@@ -399,7 +398,7 @@ Future<pw.Widget> _buildImageScoreTable(
                           .where((e) => e.value == entry.value && scores[e.key] == 1)
                           .map((e) => pw.Text(
                                 scoreDescriptions[e.key] ?? '',
-                                style: pw.TextStyle(fontSize: 10, color: PdfColors.redAccent),
+                                style: pw.TextStyle(fontSize: 10, color: PdfColors.black),
                               ))
                           .toList(),
                     ),
@@ -768,7 +767,7 @@ Widget build(BuildContext context) {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 fontFamily: 'Poppins',
-                                color: Colors.redAccent,
+                                color: Colors.black,
                               ),
                             )).toList(),
                       ),
@@ -867,7 +866,7 @@ Widget build(BuildContext context) {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 fontFamily: 'Poppins',
-                                color: Colors.redAccent,
+                                color: Colors.black,
                               ),
                             )).toList(),
                       ),
@@ -876,38 +875,6 @@ Widget build(BuildContext context) {
               ),
               
               SizedBox(width: 12),
-
-              // Wrap the score box and text in a Column
-              // Column(
-              //   children: [
-              //     Container(
-              //       width: 60,
-              //       padding: EdgeInsets.all(12),
-              //       alignment: Alignment.center,
-              //       decoration: BoxDecoration(
-              //         color: Color.fromRGBO(235, 237, 240, 1),
-              //       ),
-              //       child: Text(
-              //         score,
-              //         style: TextStyle(
-              //           fontSize: 14,
-              //           fontFamily: 'Poppins',
-              //           fontWeight: FontWeight.w700,
-              //         ),
-              //       ),
-              //     ),
-              //     SizedBox(height: 4),
-              //     Text(
-              //       'Score',
-              //       style: TextStyle(
-              //         fontSize: 12,
-              //         fontWeight: FontWeight.w500,
-              //         fontFamily: 'Poppins',
-              //       ),
-              //       textAlign: TextAlign.center,
-              //     ),
-              //   ],
-              // ),
               
               Expanded(
                   child: Align(

@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'details.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -438,8 +439,8 @@ Future<void> generatePdf(Map<String, dynamic> data, Directory targetDir) async {
               
               _buildSection("Neck, Trunk, and Leg Analysis"),
               neckTrunkLegTable, // ✅ **Use preloaded table here**
-              _buildScoreRow("Force Load Score", (bodyScores["forceLoad"] as num?)?.toInt()),
-
+              // _buildScoreRow("Force Load Score", (bodyScores["forceLoad"] as num?)?.toInt()),
+              _buildForceLoadScoreDetails(bodyScores),
               _buildCenteredScore("REBA Score A", (data['rebaScoreA'] as num?)?.toInt()),
 
               _buildSection("Arm & Wrist Analysis"),
@@ -449,8 +450,8 @@ Future<void> generatePdf(Map<String, dynamic> data, Directory targetDir) async {
               _buildCenteredScore("REBA Score B", (data['rebaScoreB'] as num?)?.toInt()),
 
               _buildSection("Activity Score"),
-              _buildScoreRow("Activity Score", (bodyScores["activityScore"] as num?)?.toInt()),
-
+              // _buildScoreRow("Activity Score", (bodyScores["activityScore"] as num?)?.toInt()),
+              _buildActivityScoreDetails(bodyScores), // ✅ **Use preloaded table here**)
               _buildCenteredScore("REBA Score C", (data['rebaScoreC'] as num?)?.toInt()),
 
               _buildCenteredScore("Total REBA Score", overallScore, emphasized: true),
@@ -496,69 +497,269 @@ pw.Widget _buildSection(String title) {
   );
 }
 
-Future<pw.Widget> _buildImageScoreTable(List<Map<String, dynamic>> images, Map<String, dynamic> scores, Map<String, String> segmentMapping) async {
+pw.Widget _buildForceLoadScoreDetails(Map<String, dynamic> bodyScores) {
+  List<pw.TableRow> rows = []; // Change List<pw.Widget> to List<pw.TableRow>
+
+  // Iterate over all force/load-related factors and add them if they have a score of 1
+  for (var entry in childToParent.entries) {
+    if (entry.value == "forceLoad" && (bodyScores[entry.key] as num?) == 1) {
+      rows.add(
+        pw.TableRow(
+          children: [
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Text(scoreDescriptions[entry.key] ?? entry.key),
+            ),
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Text("1"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  // If no force/load-related scores were recorded, show a placeholder
+  if (rows.isEmpty) {
+    rows.add(
+      pw.TableRow(
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text(
+              "No additional force/load factors",
+              style: pw.TextStyle(color: PdfColors.grey),
+            ),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("0"),
+          ),
+        ],
+      ),
+    );
+  }
+
   return pw.Table(
     border: pw.TableBorder.all(),
-    columnWidths: {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(1)},
     children: [
+      // Table Header
       pw.TableRow(
         decoration: pw.BoxDecoration(color: PdfColors.grey200),
         children: [
-          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Segment", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-        ],
-      ),
-      for (var entry in segmentMapping.entries)
-        pw.TableRow(children: [
           pw.Padding(
             padding: pw.EdgeInsets.all(8),
-            child: pw.Column(
-              children: [
-                pw.Text(entry.key),
-                if (images.any((img) => img['segment'] == entry.key))
-                  await _drawKeypointsOnImage(images.firstWhere((img) => img['segment'] == entry.key)),
-              ],
+            child: pw.Text("Force Load", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+      // Force/load-related rows
+      ...rows, // ✅ Now this works because `rows` is List<pw.TableRow>
+      // Total Force/Load Score Row
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.lightBlue),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Total Force/Load Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text((bodyScores["forceLoad"] as num?)?.toInt()?.toString() ?? "0",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+
+pw.Widget _buildActivityScoreDetails(Map<String, dynamic> bodyScores) {
+  List<pw.TableRow> rows = [];
+
+  // Iterate over all activity-related factors and add them if they have a score of 1
+  for (var entry in childToParent.entries) {
+    if (entry.value == "activityScore" && (bodyScores[entry.key] as num?) == 1) {
+      rows.add(
+         pw.TableRow(
+          children: [
+            pw.Padding(
+                padding: pw.EdgeInsets.all(8),
+                child: pw.Text(scoreDescriptions[entry.key] ?? entry.key)),
+            pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("1")),
+          ],
+        ),
+      );
+    }
+  }
+
+  // If no activity-related scores were recorded, show a placeholder
+  if (rows.isEmpty) {
+    rows.add(
+      pw.TableRow(
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text(
+              "No additional activity factors",
+              style: pw.TextStyle(color: PdfColors.grey),
             ),
           ),
-          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text((scores[entry.value] as num?)?.toInt()?.toString() ?? "-")),
-        ]),
+          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("0")),
+        ],
+)
+    );
+  }
+
+  return pw.Table(
+    border: pw.TableBorder.all(),
+    children: [
+      // Table Header
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.grey200),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Factor", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+      // Activity-related rows
+      ...rows,
+      // Total Activity Score Row
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.lightBlue),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Total Activity Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text((bodyScores["activityScore"] as num?)?.toInt()?.toString() ?? "0", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+
+Future<pw.Widget> _buildImageScoreTable(
+  List<Map<String, dynamic>> images,
+  Map<String, dynamic> scores,
+  Map<String, String> segmentMapping,
+) async {
+  return pw.Table(
+    border: pw.TableBorder.all(), // ✅ Restored table border
+    columnWidths: {0: pw.FlexColumnWidth(1), 1: pw.FlexColumnWidth(1)},
+    children: [
+      // Table Header
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.grey200),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Segment", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+
+      // Table Content
+      for (var entry in segmentMapping.entries)
+        pw.TableRow(
+          children: [
+            // Left Column: Image + Segment Name + Extra Text
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(entry.key, style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 4),
+
+                  // Image (unchanged)
+                  if (images.any((img) => img['segment'] == entry.key))
+                    await _drawKeypointsOnImage(images.firstWhere((img) => img['segment'] == entry.key)),
+
+                  // Additional descriptions below image
+                  if (childToParent.containsValue(entry.value)) ...[
+                    pw.SizedBox(height: 4),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: childToParent.entries
+                          .where((e) => e.value == entry.value && scores[e.key] == 1)
+                          .map((e) => pw.Text(
+                                scoreDescriptions[e.key] ?? '',
+                                style: pw.TextStyle(fontSize: 10, color: PdfColors.redAccent),
+                              ))
+                          .toList(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Right Column: Score
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Text((scores[entry.value] as num?)?.toInt()?.toString() ?? "-", textAlign: pw.TextAlign.center),
+            ),
+          ],
+        ),
     ],
   );
 }
 
 Future<pw.Widget> _drawKeypointsOnImage(Map<String, dynamic> imageData) async {
   Uint8List imageBytes = await downloadImage(imageData['url'].toString());
-List<Map<String, dynamic>> keypoints = 
+  List<Map<String, dynamic>> keypoints = 
     (imageData['keypoints'] as List<dynamic>)
         .map((point) => (point as Map<dynamic, dynamic>).map(
               (key, value) => MapEntry(key.toString(), value),
             ))
         .toList();
-  return pw.Container(
-    width: 100,
-    height: 100,
-    child: pw.Stack(
-      children: [
-        pw.Image(pw.MemoryImage(imageBytes), width: 100, height: 100, fit: pw.BoxFit.cover),
-        for (var point in keypoints)
-          pw.Positioned(
-            left: (point['x'] as num).toDouble() * 100,
-            top: (point['y'] as num).toDouble() * 100,
-            child: pw.SizedBox(
-  width: 4,
-  height: 4,
-  child: pw.Container(
-    decoration: pw.BoxDecoration(
-      color: PdfColors.red,
-      shape: pw.BoxShape.circle,
-    ),
-  ),
-),
-          ),
-      ],
-    ),
-  );
-}
+    return pw.Container(
+      width: 100,
+      height: 100,
+      child: pw.Stack(
+        children: [
+          pw.Image(pw.MemoryImage(imageBytes), width: 100, height: 100, fit: pw.BoxFit.cover),
+          for (var point in keypoints)
+            pw.Positioned(
+              left: (point['x'] as num).toDouble() * 100,
+              top: (point['y'] as num).toDouble() * 100,
+              child: pw.SizedBox(
+                        width: 4,
+                        height: 4,
+                        child: pw.Container(
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.red,
+                            shape: pw.BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                              ),
+          ],
+        ),
+      );
+  }
+
+
 
 pw.Widget _buildScoreRow(String title, int? score) {
   return pw.Table(
@@ -593,9 +794,8 @@ pw.Widget _buildCenteredScore(String title, int? score, {bool emphasized = false
     ],
   );
 }
-// Function to download and convert an image from Supabase URL to bytes
 
-// Helper function to determine risk category
+
 String _getRiskCategory(int score) {
   if (score == 1) return 'Negligible Risk';
   if (score >= 2 && score <= 3) return 'Low Risk. Change may be needed';
@@ -603,4 +803,51 @@ String _getRiskCategory(int score) {
   if (score >= 8 && score <= 10) return 'High Risk. Immediate change required.';
   return 'Very High Risk. Urgent Action!';
 }
+
+// Helper function to build score rows
+final Map<String, String> scoreMapping = {
+    "Neck": "neckScore",
+    "Trunk": "trunkScore",
+    "Legs & Posture": "legScore",
+    "Upper Arm": "upperArmScore",
+    "Lower Arm": "lowerArmScore",
+    "Wrist": "wristScore",
+    "Force Load Score": "forceLoad",
+    "Arm Supported": "armSupported",
+    "Coupling Score": "coupling",
+    "Activity Score": "activityScore",
+  };
+
+final Map<String, String> childToParent = {
+  "neckTwisted": "neckScore",
+  "neckBended": "neckScore",
+  "trunkTwisted": "trunkScore",
+  "trunkBended": "trunkScore",
+  "legRaised": "legScore",
+  "shoulderRaised": "upperArmScore",
+  "upperArmAbducted": "upperArmScore",
+  "armSupport": "upperArmScore",
+  "wristBent": "wristScore",
+  "shockAdded" : "forceLoad",
+  "unstableBase" : "activityScore",
+  "staticPosture" : "activityScore",
+  "repeatedAction" : "activityScore",
+};
+
+final Map<String, String> scoreDescriptions = {
+  "neckTwisted": "+1 Neck Twisted",
+  "neckBended": "+1 Neck Bended",
+  "trunkTwisted": "+1 Trunk Twisted",
+  "trunkBended": "+1 Trunk Bended",
+  "legRaised": "+1 Leg Raised",
+  "shoulderRaised": "+1 Shoulder Raised",
+  "upperArmAbducted": "+1 Upper Arm Abducted",
+  "armSupport": "-1 Arm Support",
+  "wristBent": "+1 Wrist Bent",
+  "shockAdded" : "+1 Shock Added",
+  "unstableBase" : "+1 Unstable Base",
+  "staticPosture" : "+1 Static Posture",
+  "repeatedAction" : "+1 Repeated Action",
+
+};
 
