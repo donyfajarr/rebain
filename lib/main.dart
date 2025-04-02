@@ -34,7 +34,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Image Picker and MoveNet',
+      title: 'Rebain',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: SplashScreen(), // Start with SignInScreen
     );

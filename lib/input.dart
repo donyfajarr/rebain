@@ -30,7 +30,7 @@ class VectorPainter extends CustomPainter {
     @override
     void paint(Canvas canvas, Size size) {
       final paintKeypoints = Paint()
-        ..color = Colors.red
+        ..color = Colors.black
         ..style = PaintingStyle.fill;
       final paintLines = Paint()
         ..color = Colors.blue

@@ -99,10 +99,11 @@ class AssessmentDetailsPage extends StatelessWidget {
   final pdf = pw.Document();
   print('test data : $data');
   DateTime timestampDate = (data['timestamp'] as Timestamp).toDate();
-  String formattedDate = "${timestampDate.day}-${timestampDate.month}-${timestampDate.year} ${timestampDate.hour}:${timestampDate.minute}";
+  String formattedDate = "${timestampDate.day}-${timestampDate.month}-${timestampDate.year}-${timestampDate.hour}-${timestampDate.minute}";
   
   int overallScore = (data['overallScore'] as num?)?.toInt() ?? 0;
   String risk = _getRiskCategory(overallScore);
+  String title = data['title']?.toString() ?? 'No Title';
   final bodyScores = data['bodyScores'] as Map<String, dynamic>;
 
   final List<Map<String, dynamic>> images = (data['images'] as List<dynamic>).map((image) {
@@ -147,8 +148,8 @@ class AssessmentDetailsPage extends StatelessWidget {
               
               _buildSection("Neck, Trunk, and Leg Analysis"),
               neckTrunkLegTable, // ✅ **Use preloaded table here**
-              _buildScoreRow("Force Load Score", (bodyScores["forceLoad"] as num?)?.toInt()),
-
+              // _buildScoreRow("Force Load Score", (bodyScores["forceLoad"] as num?)?.toInt()),
+              _buildForceLoadScoreDetails(bodyScores),
               _buildCenteredScore("REBA Score A", (data['rebaScoreA'] as num?)?.toInt()),
 
               _buildSection("Arm & Wrist Analysis"),
@@ -158,8 +159,8 @@ class AssessmentDetailsPage extends StatelessWidget {
               _buildCenteredScore("REBA Score B", (data['rebaScoreB'] as num?)?.toInt()),
 
               _buildSection("Activity Score"),
-              _buildScoreRow("Activity Score", (bodyScores["activityScore"] as num?)?.toInt()),
-
+              // _buildScoreRow("Activity Score", (bodyScores["activityScore"] as num?)?.toInt()),
+              _buildActivityScoreDetails(bodyScores), // ✅ **Use preloaded table here**)
               _buildCenteredScore("REBA Score C", (data['rebaScoreC'] as num?)?.toInt()),
 
               _buildCenteredScore("Total REBA Score", overallScore, emphasized: true),
@@ -174,7 +175,7 @@ class AssessmentDetailsPage extends StatelessWidget {
   );
 
   final output = await getExternalStorageDirectory();
-  final file = File("${output!.path}/REBA_Report.pdf");
+  final file = File("${output!.path}/REBA_Report_${data['title']}.pdf");
   await file.writeAsBytes(await pdf.save());
   await Share.shareXFiles([XFile(file.path)], text: "Download your REBA Report");
 }
@@ -189,6 +190,164 @@ pw.Widget _buildSection(String title) {
     ),
   );
 }
+
+pw.Widget _buildForceLoadScoreDetails(Map<String, dynamic> bodyScores) {
+  List<pw.TableRow> rows = []; // Change List<pw.Widget> to List<pw.TableRow>
+
+  // Iterate over all force/load-related factors and add them if they have a score of 1
+  for (var entry in childToParent.entries) {
+    if (entry.value == "forceLoad" && (bodyScores[entry.key] as num?) == 1) {
+      rows.add(
+        pw.TableRow(
+          children: [
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Text(scoreDescriptions[entry.key] ?? entry.key),
+            ),
+            pw.Padding(
+              padding: pw.EdgeInsets.all(8),
+              child: pw.Text("1"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  // If no force/load-related scores were recorded, show a placeholder
+  if (rows.isEmpty) {
+    rows.add(
+      pw.TableRow(
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text(
+              "No additional force/load factors",
+              style: pw.TextStyle(color: PdfColors.grey),
+            ),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("0"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  return pw.Table(
+    border: pw.TableBorder.all(),
+    children: [
+      // Table Header
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.grey200),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Force Load", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+      // Force/load-related rows
+      ...rows, // ✅ Now this works because `rows` is List<pw.TableRow>
+      // Total Force/Load Score Row
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.lightBlue),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Total Force/Load Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text((bodyScores["forceLoad"] as num?)?.toInt()?.toString() ?? "0",
+                style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+
+pw.Widget _buildActivityScoreDetails(Map<String, dynamic> bodyScores) {
+  List<pw.TableRow> rows = [];
+
+  // Iterate over all activity-related factors and add them if they have a score of 1
+  for (var entry in childToParent.entries) {
+    if (entry.value == "activityScore" && (bodyScores[entry.key] as num?) == 1) {
+      rows.add(
+         pw.TableRow(
+          children: [
+            pw.Padding(
+                padding: pw.EdgeInsets.all(8),
+                child: pw.Text(scoreDescriptions[entry.key] ?? entry.key)),
+            pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("1")),
+          ],
+        ),
+      );
+    }
+  }
+
+  // If no activity-related scores were recorded, show a placeholder
+  if (rows.isEmpty) {
+    rows.add(
+      pw.TableRow(
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text(
+              "No additional activity factors",
+              style: pw.TextStyle(color: PdfColors.grey),
+            ),
+          ),
+          pw.Padding(padding: pw.EdgeInsets.all(8), child: pw.Text("0")),
+        ],
+)
+    );
+  }
+
+  return pw.Table(
+    border: pw.TableBorder.all(),
+    children: [
+      // Table Header
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.grey200),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Factor", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+      // Activity-related rows
+      ...rows,
+      // Total Activity Score Row
+      pw.TableRow(
+        decoration: pw.BoxDecoration(color: PdfColors.lightBlue),
+        children: [
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text("Total Activity Score", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+          pw.Padding(
+            padding: pw.EdgeInsets.all(8),
+            child: pw.Text((bodyScores["activityScore"] as num?)?.toInt()?.toString() ?? "0", style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 
 Future<pw.Widget> _buildImageScoreTable(
   List<Map<String, dynamic>> images,
@@ -293,6 +452,7 @@ Future<pw.Widget> _drawKeypointsOnImage(Map<String, dynamic> imageData) async {
         ),
       );
   }
+
 
 
 pw.Widget _buildScoreRow(String title, int? score) {
