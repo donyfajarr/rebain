@@ -85,8 +85,9 @@ class RebaReportScreen extends StatefulWidget {
   final Map<String, int> bodyPartScores;
   final Map<String, File?> capturedImages;
   Map<String, List<Keypoint>> keypoints = {};
+  String? side;
   
-  RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints});
+  RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints, required this.side});
 
   @override
   _RebaReportScreenState createState() => _RebaReportScreenState();
@@ -100,6 +101,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   late int rebaScoreA;
   late int rebaScoreB;
   late int rebaScoreC;
+  // String? side;
   
 
   final Map<String, String> bodyPartToSegment = {
@@ -182,6 +184,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     print('rebascoreC : $rebaScoreC');
     int rebaScore = rebaScoreC + (scores['activityScore'] ?? 0);
     print('total reba : $rebaScore');
+    print(widget.side);
     return {
     'rebaScoreA': rebaScoreA,
     'rebaScoreB': rebaScoreB,
@@ -288,6 +291,7 @@ void _submitAssessment() async {
       'rebaScoreA': rebaScoreA,
       'rebaScoreB': rebaScoreB,
       'rebaScoreC': rebaScoreC,
+      'side' : widget.side,
     };
 
     print("🚀 Submitting Assessment: $assessmentData");

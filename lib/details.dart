@@ -420,6 +420,7 @@ Future<pw.Widget> _buildImageScoreTable(
 
 Future<pw.Widget> _drawKeypointsOnImage(Map<String, dynamic> imageData) async {
   Uint8List imageBytes = await downloadImage(imageData['url'].toString());
+  
   List<Map<String, dynamic>> keypoints = 
     (imageData['keypoints'] as List<dynamic>)
         .map((point) => (point as Map<dynamic, dynamic>).map(

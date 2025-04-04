@@ -720,7 +720,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Right Lower Arm Angle: $rightLowerArmAngle°');
   
 
-  if (_selectedPoint == "Left"){
+  if (_selectedSide == "Left"){
     _anglesMap[segment] = {
       "Lower Arm": [leftLowerArmAngle],
     };
@@ -812,6 +812,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
           bodyPartScores: segmentScores,
           capturedImages: _capturedImages,
           keypoints: _keypointsMap,
+          side : _selectedSide,
         ),
       ),
     );
@@ -1460,6 +1461,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                           bodyPartScores: segmentScores,
                           capturedImages: _capturedImages,
                           keypoints: _keypointsMap,
+                          side: _selectedSide
                         ),
                       ),
                     );
