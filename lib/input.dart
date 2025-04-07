@@ -63,7 +63,7 @@ class VectorPainter extends CustomPainter {
 
       case "legs & posture":
         
-        if (_selectedSide == "left"){
+        if (_selectedSide == "Left"){
           connections = [
           [11, 13], [13, 15],];
           relevantKeypoints = [11, 13, 15];
@@ -77,7 +77,7 @@ class VectorPainter extends CustomPainter {
         break;
 
       case "upper arm":
-        if (_selectedSide == "left"){
+        if (_selectedSide == "Left"){
           connections = [
           [7, 5], [5, 11]];
           relevantKeypoints = [5,7,11];
@@ -91,7 +91,7 @@ class VectorPainter extends CustomPainter {
         break;
 
       case "lower arm":
-        if (_selectedSide == "left"){
+        if (_selectedSide == "Left"){
           connections = [
           [9, 7], [7, 5]];
           relevantKeypoints = [7,9,5];
@@ -106,7 +106,7 @@ class VectorPainter extends CustomPainter {
 
       case "wrist":
         if (keypoints.isEmpty) return;
-        if (_selectedSide == "left"){
+        if (_selectedSide == "Left"){
           connections = [
           [7, 9], [9, 17]];
           relevantKeypoints = [7,9,17];
@@ -587,7 +587,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   var(leftLegs, rightLegs) = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
   double legs = 0;
-  if (_selectedSide == "left"){
+  if (_selectedSide == "Left"){
     legs = leftLegs;
     _anglesMap[segment] = {
         "Legs & Posture": [leftLegs]
@@ -629,7 +629,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Left Upper Arm Angle: $leftUpperArmAngle°');
   print('Right Upper Arm Angle: $rightupperArmAngle');
 
-  if(_selectedSide == "left"){
+  if(_selectedSide == "Left"){
     selectedUpper = leftUpperArmAngle;
 
    if (leftUpperArmAngle >= -20 && leftUpperArmAngle <= 20){
