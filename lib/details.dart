@@ -610,54 +610,101 @@ Widget build(BuildContext context) {
 
 
   Widget _buildHeader() {
-    Timestamp timestamp = data['timestamp'] as Timestamp;
-    DateTime timestampDate = timestamp.toDate();
-    String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
+  Timestamp timestamp = data['timestamp'] as Timestamp;
+  DateTime timestampDate = timestamp.toDate();
+  String formattedDate = DateFormat('dd-MM-yyyy HH:mm:ss').format(timestampDate);
 
-    int overallScore = (data['overallScore'] ?? 0) as int;
-    String risk = 'No risk found';
-  
-    print(overallScore);
-      // Ensure 'overallScore' is a number and check if it's greater than 1
-    if (overallScore == 1) {
-      risk = 'Negligible Risk';
-    }
-    else if(overallScore >= 2 && overallScore <= 3){
-      risk = 'Low Risk. Change may be needed';
-    }
-    else if(overallScore >=4 && overallScore<=7){
-      risk = 'Medium Risk. Further Investigate. Change Soon.';
-    }
-    else if (overallScore >=8 && overallScore <=10){
-      risk = 'High Risk. Investigate and Implement Change';
-    }
-    else{
-      risk = 'Very High Risk. Implement Change';
-    }
+  int overallScore = (data['overallScore'] ?? 0) as int;
+  String risk = 'No risk found';
 
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(data['title'].toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color:Color.fromRGBO(55, 149, 112, 1))),
-          SizedBox(height: 8),
-          Row(children: [Icon(Icons.description_rounded, size: 16), SizedBox(width: 6), Text(data['description'].toString(), style:TextStyle(fontFamily: 'Poppins', fontSize: 12))]),
-          SizedBox(height: 4),
-          Row(children: [Icon(Icons.calendar_today, size: 16), SizedBox(width: 6), Text(formattedDate, style:TextStyle(fontFamily: 'Poppins', fontSize: 12))]),
-          SizedBox(height: 4),
-          Row(children: [Icon(Icons.bar_chart_rounded, size: 16), SizedBox(width: 6), Text("REBA Score: ${data['overallScore'] ?? '-'}", style:TextStyle(fontFamily: 'Poppins', fontSize: 12))]),
-          SizedBox(height: 4),
-          Row(children: [Icon(Icons.warning, size: 16), SizedBox(width: 6), Text(risk, style:TextStyle(fontFamily: 'Poppins', fontSize: 12))]),
-        ],
-      ),
-    );
+  if (overallScore == 1) {
+    risk = 'Negligible Risk';
+  } else if (overallScore >= 2 && overallScore <= 3) {
+    risk = 'Low Risk. Change may be needed';
+  } else if (overallScore >= 4 && overallScore <= 7) {
+    risk = 'Medium Risk. Further Investigate. Change Soon.';
+  } else if (overallScore >= 8 && overallScore <= 10) {
+    risk = 'High Risk. Investigate and Implement Change';
+  } else if (overallScore > 10) {
+    risk = 'Very High Risk. Implement Change';
   }
+
+  return Container(
+    padding: EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          data['title'].toString(),
+          style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color.fromRGBO(55, 149, 112, 1)),
+        ),
+        SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.description_rounded, size: 16),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                data['description'].toString(),
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(Icons.calendar_today, size: 16),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                formattedDate,
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(Icons.bar_chart_rounded, size: 16),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                "REBA Score: ${data['overallScore'] ?? '-'}",
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning, size: 16),
+            SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                risk,
+                style: TextStyle(fontFamily: 'Poppins', fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildAnalysisSection(String title, List<String> segments, Map<String, dynamic> data) {
   return Column(
