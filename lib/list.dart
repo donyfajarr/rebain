@@ -30,7 +30,9 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
           onPressed: () {},
         ),
       ),
-      body: Column(
+      body: Container(
+      color: Colors.white,
+      child : Column(
         children: [
           // 🔍 Search, Filter, and Sort
           Padding(
@@ -145,7 +147,12 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
                     }
 
                     return Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      color: Color.fromRGBO(244, 246, 245, 1),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      // shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       margin: EdgeInsets.only(bottom: 12),
                       child: Padding(
                         padding: const EdgeInsets.all(10),
@@ -265,6 +272,7 @@ class _AssessmentListPageState extends State<AssessmentListPage> {
           ),
         ],
       ),
+    )
     );
   }
 
