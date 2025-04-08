@@ -85,9 +85,9 @@ class RebaReportScreen extends StatefulWidget {
   final Map<String, int> bodyPartScores;
   final Map<String, File?> capturedImages;
   Map<String, List<Keypoint>> keypoints = {};
-  String? side;
+  Map<String, String> segmentSide;
   
-  RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints, required this.side});
+  RebaReportScreen({required this.bodyPartScores, required this.capturedImages, required this.keypoints, required this.segmentSide});
 
   @override
   _RebaReportScreenState createState() => _RebaReportScreenState();
@@ -184,7 +184,7 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     print('rebascoreC : $rebaScoreC');
     int rebaScore = rebaScoreC + (scores['activityScore'] ?? 0);
     print('total reba : $rebaScore');
-    print(widget.side);
+    // print(widget.side);
     return {
     'rebaScoreA': rebaScoreA,
     'rebaScoreB': rebaScoreB,
@@ -254,14 +254,16 @@ void _submitAssessment() async {
             print('Uploading compressed image for segment: $segmentKey');
             String? imageUrl = await uploadImageToSupabase(compressedImage, userId, assessmentId, segmentKey);
             if (imageUrl != null) {
+              
               List<Map<String, double>> keypoints = widget.keypoints[segmentKey]
                       ?.map((kp) => {"x": kp.x, "y": kp.y})
                       .toList() ?? [];
-
+              String side = segmentSide[segmentKey] ?? 'Unknown'; // Default to 'Unknown' if no side is set
               return {
                 "segment": segmentKey,
                 "url": imageUrl,
                 "keypoints": keypoints,
+                "side" : side,
               };
             }
           } catch (e) {
@@ -291,7 +293,7 @@ void _submitAssessment() async {
       'rebaScoreA': rebaScoreA,
       'rebaScoreB': rebaScoreB,
       'rebaScoreC': rebaScoreC,
-      'side' : widget.side,
+    
     };
 
     print("🚀 Submitting Assessment: $assessmentData");

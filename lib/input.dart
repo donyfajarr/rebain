@@ -8,6 +8,7 @@ import 'report.dart';
 late TextEditingController _loadController;
 
 Map<String, int> segmentScores = {};
+Map<String, String> segmentSide = {};
 
 class Keypoint {
   final double x;
@@ -63,7 +64,7 @@ class VectorPainter extends CustomPainter {
 
       case "legs & posture":
         
-        if (_selectedSide == "Left"){
+        if (segmentSide[segmentName] == "Left"){
           connections = [
           [11, 13], [13, 15],];
           relevantKeypoints = [11, 13, 15];
@@ -77,7 +78,7 @@ class VectorPainter extends CustomPainter {
         break;
 
       case "upper arm":
-        if (_selectedSide == "Left"){
+        if (segmentSide[segmentName] == "Left"){
           connections = [
           [7, 5], [5, 11]];
           relevantKeypoints = [5,7,11];
@@ -91,7 +92,7 @@ class VectorPainter extends CustomPainter {
         break;
 
       case "lower arm":
-        if (_selectedSide == "Left"){
+        if (segmentSide[segmentName] == "Left"){
           connections = [
           [9, 7], [7, 5]];
           relevantKeypoints = [7,9,5];
@@ -106,7 +107,7 @@ class VectorPainter extends CustomPainter {
 
       case "wrist":
         if (keypoints.isEmpty) return;
-        if (_selectedSide == "Left"){
+        if (segmentSide[segmentName] == "Left"){
           connections = [
           [7, 9], [9, 17]];
           relevantKeypoints = [7,9,17];
@@ -587,7 +588,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   var(leftLegs, rightLegs) = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
   double legs = 0;
-  if (_selectedSide == "Left"){
+  if (segmentSide[segment] == "Left"){
     legs = leftLegs;
     _anglesMap[segment] = {
         "Legs & Posture": [leftLegs]
@@ -629,7 +630,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Left Upper Arm Angle: $leftUpperArmAngle°');
   print('Right Upper Arm Angle: $rightupperArmAngle');
 
-  if(_selectedSide == "Left"){
+  if(segmentSide[segment] == "Left"){
     selectedUpper = leftUpperArmAngle;
 
    if (leftUpperArmAngle >= -20 && leftUpperArmAngle <= 20){
@@ -720,7 +721,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   print('Right Lower Arm Angle: $rightLowerArmAngle°');
   
 
-  if (_selectedSide == "Left"){
+  if (segmentSide[segment] == "Left"){
     _anglesMap[segment] = {
       "Lower Arm": [leftLowerArmAngle],
     };
@@ -758,7 +759,14 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
     if (segment.toLowerCase() == 'wrist'){
       Vector2D chosen = Vector2D(keypoints[17].x, keypoints[17].y);
-      double wristAngle = 180.0 - PostureCalculator.calculateWristAngle(leftWrist, leftElbow, chosen);
+      double wristAngle = 0.0;
+      if (segmentSide[segment] == "Left"){
+        wristAngle = 180.0 - PostureCalculator.calculateWristAngle(leftWrist, leftElbow, chosen);
+      }
+      else {
+        wristAngle = 180.0 - PostureCalculator.calculateWristAngle(rightWrist, rightElbow, chosen);
+      }
+      
       
       print('Wrist Angle: $wristAngle');
       _anglesMap[segment] = {
@@ -803,7 +811,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       });
     } else {
     print(segmentScores);
-    print('sdssssssssssss');
     // Navigate to the REBA report screen when reaching the last segment
     Navigator.push(
       context,
@@ -812,7 +819,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
           bodyPartScores: segmentScores,
           capturedImages: _capturedImages,
           keypoints: _keypointsMap,
-          side : _selectedSide,
+          segmentSide : segmentSide,
         ),
       ),
     );
@@ -902,7 +909,24 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           ElevatedButton(
-                            onPressed: () => setState(() => _selectedSide = "Left"),
+                            onPressed: () {
+                              setState(() {
+                                _selectedSide = "Left";
+
+                                // Update segmentSide values for relevant segments
+                                List<String> sideSpecificSegments = [
+                                  'Legs & Posture',
+                                  'Upper Arm',
+                                  'Lower Arm',
+                                  'Wrist'
+                                ];
+
+                                for (var segment in sideSpecificSegments) {
+                                  segmentSide[segment] = _selectedSide!;
+                                }
+                                print(segmentSide);
+                              });
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _selectedSide == "Left" ? Color.fromRGBO(55, 149, 112, 1) : Colors.white,
                               side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
@@ -916,7 +940,24 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                           ),
                           SizedBox(width: 10),
                           ElevatedButton(
-                            onPressed: () => setState(() => _selectedSide = "Right"),
+                            onPressed: () {
+                              setState(() {
+                                _selectedSide = "Right";
+
+                                // Update segmentSide values for relevant segments
+                                List<String> sideSpecificSegments = [
+                                  'Legs & Posture',
+                                  'Upper Arm',
+                                  'Lower Arm',
+                                  'Wrist'
+                                ];
+
+                                for (var segment in sideSpecificSegments) {
+                                  segmentSide[segment] = _selectedSide!;
+                                }
+                                print(segmentSide);
+                              });
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _selectedSide == "Right" ? Color.fromRGBO(55, 149, 112, 1) : Colors.white,
                               side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
@@ -1354,7 +1395,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
             ),
           ),
         ]
-       else if (currentSegment.toLowerCase() == "activity score") ...[
+        else if (currentSegment.toLowerCase() == "activity score") ...[
         Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.all(8),
@@ -1461,7 +1502,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                           bodyPartScores: segmentScores,
                           capturedImages: _capturedImages,
                           keypoints: _keypointsMap,
-                          side: _selectedSide
+                          segmentSide: segmentSide
                         ),
                       ),
                     );
@@ -1478,12 +1519,16 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
           ),
         ),
       ]
-
-
         else if (currentSegment.toLowerCase() == "wrist" && _showSelectionUI) ...[
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Text(
+                      "Segment: $currentSegment",
+                      style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+                    ),
+              SizedBox(height: 5),
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
                 child: Text(
@@ -1665,7 +1710,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     ],
   ),
 ]
-        else if(currentSegment.toLowerCase() == "neck")...[
+        else if (currentSegment.toLowerCase() == "neck")...[
            Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1872,7 +1917,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
             ],
           ),
         ]
-        else if(currentSegment.toLowerCase() == "trunk")...[
+        else if (currentSegment.toLowerCase() == "trunk")...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2079,7 +2124,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
             ],
           ),
         ]
-        else if(currentSegment.toLowerCase() == "upper arm")...[
+        else if (currentSegment.toLowerCase() == "upper arm")...[
              Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2092,7 +2137,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 10),
+              SizedBox(height: 5),
 
               // Image Display Area (with VectorPainter & Angle Measurements)
               Container(
@@ -2109,7 +2154,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                       "Segment: $currentSegment",
                       style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 5),
 
                     _capturedImages[currentSegment] != null
                         ? Column(
@@ -2136,7 +2181,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                                     ),
                                 ],
                               ),
-                              SizedBox(height: 8), // Space between image and text
+                              SizedBox(height: 5), // Space between image and text
 
                               // ✅ Small Angle Measurements Below the Image
                               if (_anglesMap[currentSegment] != null)
@@ -2181,7 +2226,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 10),
+              SizedBox(height: 5),
 
               // ✅ Centered Question Box
              // Checkbox Section with Left & Right Padding
@@ -2221,8 +2266,81 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 20),
+              SizedBox(height: 10),
 
+              // Segment Left/Right Button
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Left'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Left') {
+                  setState((){
+                    print("Change left");
+                    segmentSide[currentSegment] = 'Left';
+                    
+                  });
+                  await _predict(_capturedImages["Upper Arm"]!, "Upper Arm",[]);
+
+                }
+              },
+              child: Text(
+                'Left',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Left'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            SizedBox(width: 5),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Right'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Right') {
+                  setState(() {
+                    print("change right");
+                    segmentSide[currentSegment] = 'Right';
+                    
+                  });
+                  await _predict(_capturedImages["Upper Arm"]!, "Upper Arm",[]);
+                }
+              },
+              child: Text(
+                'Right',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Right'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
               // ✅ Image Upload Buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -2241,7 +2359,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                         style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    SizedBox(width: 10),
+                    SizedBox(width: 5),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -2258,14 +2376,14 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 10),
+              SizedBox(height: 5),
 
               // ✅ Navigation Buttons
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
                   children: [
-                    SizedBox(height: 10),
+                    SizedBox(height: 5),
                     Align(
                       alignment: Alignment.center,
                       child: ElevatedButton(
@@ -2299,7 +2417,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 10),
+              SizedBox(height: 5),
 
               // Image Display Area (with VectorPainter & Angle Measurements)
               Container(
@@ -2316,7 +2434,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                       "Segment: $currentSegment",
                       style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 5),
 
                     _capturedImages[currentSegment] != null
                         ? Column(
@@ -2343,7 +2461,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                                     ),
                                 ],
                               ),
-                              SizedBox(height: 8), // Space between image and text
+                              SizedBox(height: 5), // Space between image and text
 
                               // ✅ Small Angle Measurements Below the Image
                               if (_anglesMap[currentSegment] != null)
@@ -2388,7 +2506,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 20),
+              SizedBox(height: 5),
 
               // ✅ Centered Question Box
               Padding(
@@ -2400,7 +2518,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFamily: 'Poppins'),
                       textAlign: TextAlign.center, // ✅ Center the text
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 5),
                     Center(
                       child: DropdownButton<int>(
                         value: segmentScores["legRaised"] ?? 1, // ✅ Default to 1 (No)
@@ -2431,7 +2549,81 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 20),
+              SizedBox(height: 10),
+
+               // Segment Left/Right Button
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Left'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Left') {
+                  setState((){
+                    print("Change left");
+                    segmentSide[currentSegment] = 'Left';
+                    
+                  });
+                  await _predict(_capturedImages["Legs & Posture"]!, "Legs & Posture",[]);
+
+                }
+              },
+              child: Text(
+                'Left',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Left'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            SizedBox(width: 5),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Right'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Right') {
+                  setState(() {
+                    print("change right");
+                    segmentSide[currentSegment] = 'Right';
+                    
+                  });
+                  await _predict(_capturedImages["Legs & Posture"]!, "Legs & Posture",[]);
+                }
+              },
+              child: Text(
+                'Right',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Right'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
 
               // ✅ Image Upload Buttons
               Padding(
@@ -2451,7 +2643,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                         style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ),
-                    SizedBox(width: 10),
+                    SizedBox(width: 5),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
@@ -2468,7 +2660,7 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
                 ),
               ),
 
-              SizedBox(height: 10),
+              SizedBox(height: 5),
 
               // ✅ Navigation Buttons
               Padding(
@@ -2496,6 +2688,248 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
             ],
           ),
         ]
+        else if (currentSegment.toLowerCase() == "lower arm") ...[
+           Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [ 
+                    Text(
+                      "Take a photo or import an existing image to evaluate posture.",
+                      style: TextStyle(fontSize: 12, fontFamily: 'Poppins'),
+                    ),
+                  ],
+                ),
+              ),
+
+            SizedBox(height: 10),
+
+            // Image Display Area
+           Container(
+              margin: EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    "Segment: $currentSegment",
+                    style: TextStyle(fontSize: 16, fontFamily: 'Poppins', fontWeight: FontWeight.w600),
+                  ),
+                  SizedBox(height: 10),
+
+                  _capturedImages[currentSegment] != null
+                      ? Column(
+                          children: [
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Image.file(
+                                  _capturedImages[currentSegment]!,
+                                  width: 256,
+                                  height: 256,
+                                  fit: BoxFit.cover,
+                                ),
+                                if (_keypointsMap[currentSegment] != null)
+                                  CustomPaint(
+                                    size: Size(256, 256),
+                                    painter: VectorPainter(
+                                      _keypointsMap[currentSegment]!,
+                                      currentSegment,
+                                      0, // No padding needed
+                                      0,
+                                      _selectedSide,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            SizedBox(height: 8), // Space between image and text
+
+                            // ✅ Small Angle Measurements Below the Image (Inside the Same Container)
+                            if (_anglesMap[currentSegment] != null)
+                              Column(
+                                children: _anglesMap[currentSegment]!.entries.map((entry) {
+                                  List<double> values = entry.value;
+                                  String formattedText = values.length == 2
+                                      ? "${entry.key}: L ${values[0].toStringAsFixed(2)}° | R ${values[1].toStringAsFixed(2)}°"
+                                      : values.length == 1
+                                          ? "${entry.key}: ${values[0].toStringAsFixed(2)}°"
+                                          : "${entry.key}: No data available";
+
+                                  return Text(
+                                    formattedText,
+                                    style: TextStyle(
+                                      fontSize: 10, // ✅ Small text
+                                      fontFamily: 'Poppins',
+                                      color: Colors.black87,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  );
+                                }).toList(),
+                              ),
+                          ],
+                        )
+                      : Container(
+                          width: 256,
+                          height: 256,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.green, width: 2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Text(
+                              "No image captured for $currentSegment",
+                              style: TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins'),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 20),
+
+             // Segment Left/Right Button
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Left'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Left') {
+                  setState((){
+                    print("Change left");
+                    segmentSide[currentSegment] = 'Left';
+                    
+                  });
+                  await _predict(_capturedImages["Lower Arm"]!, "Lower Arm",[]);
+
+                }
+              },
+              child: Text(
+                'Left',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Left'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            SizedBox(width: 5),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Right'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Right') {
+                  setState(() {
+                    print("change right");
+                    segmentSide[currentSegment] = 'Right';
+                    
+                  });
+                  await _predict(_capturedImages["Lower Arm"]!, "Lower Arm",[]);
+                }
+              },
+              child: Text(
+                'Right',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Right'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    
+              // Button Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.gallery) : null,
+                      child: Text('Gallery', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
+                    ),
+                    SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                      ),
+                      onPressed: _isModelReady ? () => _pickImage(ImageSource.camera) : null,
+                      child: Text('Scan', style: TextStyle(color: Color.fromRGBO(55, 149, 112, 1), fontFamily: 'Poppins', fontSize:12, fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // Navigation Buttons
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  children: [
+                    SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.center,
+                      child : 
+                          ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color.fromRGBO(55, 149, 112, 1),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                          onPressed: _capturedImages[currentSegment] != null ? _nextSegment : null,
+                          child: Text(
+                            _currentStep == _bodySegments.length - 1 ? "Confirm & View Report" : "Next",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white, fontFamily: 'Poppins'),
+                          ),
+                        ),
+                      )
+                  ],
+                ),
+              ),
+            ],
+          ),
+        
+        ]  // Lower Arm Segment
         else ...[
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2604,6 +3038,84 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
             ),
 
             SizedBox(height: 20),
+
+             // Segment Left/Right Button
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Left'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Left') {
+                  setState((){
+                    print("Change left");
+                    segmentSide[currentSegment] = 'Left';
+                    _showSelectionUI = true; // Enable point selection for wrist
+                    _selectedPoint = null; // Reset previous selection
+                    
+                  });
+                  await _predict(_capturedImages["Wrist"]!, "Wrist",[]);
+
+                }
+              },
+              child: Text(
+                'Left',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Left'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            SizedBox(width: 5),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: segmentSide[currentSegment] == 'Right'
+                    ? Color.fromRGBO(55, 149, 112, 1)
+                    : Colors.white,
+                side: BorderSide(color: Color.fromRGBO(55, 149, 112, 1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: () async{
+                // Prevent action if the current side is already selected
+                if (segmentSide[currentSegment] != 'Right') {
+                  setState(() {
+                    print("change right");
+                    segmentSide[currentSegment] = 'Right';
+                    _showSelectionUI = true; // Enable point selection for wrist
+                    _selectedPoint = null; // Reset previous selection
+                    
+                  });
+                  await _predict(_capturedImages["Wrist"]!, "Wrist",[]);
+                }
+              },
+              child: Text(
+                'Right',
+                style: TextStyle(
+                  color: segmentSide[currentSegment] == 'Right'
+                      ? Colors.white
+                      : Color.fromRGBO(55, 149, 112, 1),
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     
               // Button Section
               Padding(
