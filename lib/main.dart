@@ -37,6 +37,7 @@ class MyApp extends StatelessWidget {
       title: 'Rebain',
       theme: ThemeData(primarySwatch: Colors.blue),
       home: SplashScreen(), // Start with SignInScreen
+      debugShowCheckedModeBanner: false,
     );
   }
 }

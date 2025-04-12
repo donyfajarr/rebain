@@ -112,21 +112,18 @@ TensorImage getProcessedImage() {
   inputImage = imageProcessor.process(inputImage);
   return inputImage;
 }
+
 Future<List<Keypoint>> processAndRunModel(Image imageFile) async {
   try {
     print("Processing image...");
     final inputBuffer =
         await _imageToByteListUint8(imageFile, 256);
     _outputBuffer = TensorBuffer.createFixedSize(_outputShape, _outputType);
-    print(inputBuffer);
     interpreter.run(inputBuffer, _outputBuffer.buffer);
     final outputData = _outputBuffer.getDoubleList();
-    
-    List<Keypoint> keypoints = parseKeypoints(outputData, imageFile.width.toDouble(), imageFile.height.toDouble());
-    // close();
+    List<Keypoint> keypoints = parseKeypoints(outputData, imageFile.width.toDouble(), 
+                                              imageFile.height.toDouble());
     return keypoints;
-    
-
   } catch (e) {
     print("Error running model: $e");
     return [];

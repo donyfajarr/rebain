@@ -76,7 +76,6 @@ int getRebaScoreB(int upperArmScore, int lowerArmScore, int wristScore) {
   return rebaTableB[upperArmScore]?[lowerArmScore]?[wristScore] ?? 0;
 }
 
-// Function to retrieve final REBA Score from Table C
 int getRebaScoreC(int scoreA, int scoreB) {
   return rebaTableC[scoreA]?[scoreB] ?? 0;
 }
@@ -133,7 +132,6 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     }
 
     // Legs & Posture Calculation
-
     if (scores['legRaised'] == 1){
       scores['legScore'] = (scores['legScore'] ?? 0) + 1;
     }
@@ -145,11 +143,9 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     if (scores['shoulderRaised'] ==1 ){
       scores['upperArmScore'] = (scores['upperArmScore'] ?? 0) + 1;
     }
-
     if (scores['upperArmAbducted'] == 1){
       scores['upperArmScore'] = (scores['upperArmScore'] ?? 0) + 1;
     }
-
     if (scores['armSupport'] == -1){
       scores['upperArmScore'] = (scores['upperArmScore'] ?? 0) -1;
     }
@@ -163,7 +159,6 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     if (scores['shockAdded'] == 1){
       scores['forceLoad'] = (scores['forceLoad'] ?? 0) + 1;
     }
-
     if (scores['unstableBase'] == 1){
       scores['activityScore'] = (scores['activityScore'] ?? 0) +1; 
     }
@@ -174,15 +169,19 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
       scores['activityScore'] = (scores['activityScore'] ?? 0) +1; 
     }
 
-    print(scores);
+    
     int rebaScoreA = getRebaScoreA(scores['neckScore'] ?? 0, scores['legScore'] ?? 0, scores['trunkScore'] ?? 0) + (scores['forceLoad'] ?? 0);
-    print('rebascoreA : $rebaScoreA');
+    
     int rebaScoreB = getRebaScoreB(scores['lowerArmScore'] ?? 0, scores['upperArmScore'] ?? 0, scores['wristScore'] ?? 0) + (scores['coupling'] ?? 0);
-    print('rebascoreB : $rebaScoreB');
+    
     int rebaScoreC = getRebaScoreC(rebaScoreA, rebaScoreB);
+   
+    int rebaScore = rebaScoreC + (scores['activityScore'] ?? 0);
+    print(scores);
+    print('rebascoreA : $rebaScoreA');
+    print('rebascoreB : $rebaScoreB');
     print('Fetching rebaTableC[rebaScoreA][rebaScoreB]: ${rebaTableC[rebaScoreA]?[rebaScoreB]}');
     print('rebascoreC : $rebaScoreC');
-    int rebaScore = rebaScoreC + (scores['activityScore'] ?? 0);
     print('total reba : $rebaScore');
     // print(widget.side);
     return {

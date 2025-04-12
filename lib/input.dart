@@ -230,7 +230,8 @@ class PostureCalculator {
     return (leftAngle, rightAngle);
   }
   static (double,double) calculateUpperArmAbducted(
-    Vector2D leftShoulder, Vector2D leftElbow, Vector2D midShoulder, Vector2D rightShoulder, Vector2D rightElbow){
+    Vector2D leftShoulder, Vector2D leftElbow, Vector2D midShoulder, Vector2D rightShoulder, 
+    Vector2D rightElbow){
       double leftAngle = calculateAngle(leftElbow, leftShoulder, midShoulder);
       double rightAngle = calculateAngle(rightElbow, rightShoulder, midShoulder);
       return (leftAngle, rightAngle);
@@ -241,12 +242,10 @@ class PostureCalculator {
   }
 
   static double calculateNeckAngle(Vector2D midEar, Vector2D midShoulder, Vector2D midHip) {
-
     return calculateAngle(midEar, midShoulder, midHip);
   }
   static double calculateNeckTwisted(Vector2D nose, Vector2D leftShoulder, Vector2D rightShoulder) {
     Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
-     // Corrected: Check angle in the horizontal plane
     double verticalDiff = (nose.x - midShoulder.x).abs();
 
     return verticalDiff;
@@ -259,20 +258,25 @@ class PostureCalculator {
     double meanNeckBending = (neckBendingLeft + neckBendingRight) / 2;
     
     return (65 - meanNeckBending).abs();
-}
+  }
+
   static double calculateTrunkFlexion(Vector2D midknee, Vector2D midhip, Vector2D midshoulder){
     return calculateAngle(midknee, midhip, midshoulder);
   }
-  static double calculateTrunkTwisting(Vector2D rightshoulder, Vector2D midhip, Vector2D righthip, Vector2D leftshoulder, Vector2D lefthip){
-    double angle = max(calculateAngle(rightshoulder, midhip, righthip), calculateAngle(leftshoulder, midhip, lefthip));
+  static double calculateTrunkTwisting(Vector2D rightshoulder, Vector2D midhip, Vector2D righthip, 
+  Vector2D leftshoulder, Vector2D lefthip){
+    double angle = max(calculateAngle(rightshoulder, midhip, righthip), calculateAngle(leftshoulder, 
+    midhip, lefthip));
     return angle;
   }
-  static (double,double) calculateTrunkBending(Vector2D righthip,Vector2D midhip,Vector2D midshoulder,Vector2D lefthip){
-  double rightangle = calculateAngle(righthip, midhip, midshoulder);
-  double leftangle = calculateAngle(lefthip, midhip, midshoulder);
-  return (rightangle,leftangle);
+  static (double,double) calculateTrunkBending(Vector2D righthip,Vector2D midhip,Vector2D midshoulder,
+  Vector2D lefthip){
+    double rightangle = calculateAngle(righthip, midhip, midshoulder);
+    double leftangle = calculateAngle(lefthip, midhip, midshoulder);
+    return (rightangle,leftangle);
   }
-  static (double,double) calculateLegs(Vector2D leftHip, Vector2D leftKnee, Vector2D leftAnkle, Vector2D rightHip, Vector2D rightKnee, Vector2D rightAnkle){
+  static (double,double) calculateLegs(Vector2D leftHip, Vector2D leftKnee, Vector2D leftAnkle, 
+  Vector2D rightHip, Vector2D rightKnee, Vector2D rightAnkle){
     double leftlegs = calculateAngle(leftHip, leftKnee, leftAnkle);
     double rightlegs = calculateAngle(rightHip, rightKnee, rightAnkle);
     return (leftlegs, rightlegs);
@@ -280,7 +284,6 @@ class PostureCalculator {
   static double calculateWristAngle(Vector2D chosenWrist, Vector2D chosenElbow, Vector2D chosen){
     double angle = calculateAngle(chosenElbow, chosenWrist, chosen);
     return angle;
-  // }
   }
 }
 
@@ -435,9 +438,8 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     }
   });
 
-    // Convert keypoints to Vector2D
+  // Konversi Titik Tubuh kedalam Vektor
   Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
-  Vector2D leftEye = Vector2D(keypoints[1].x, keypoints[1].y);
   Vector2D leftEar = Vector2D(keypoints[3].x, keypoints[3].y);
   Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
   Vector2D leftElbow = Vector2D(keypoints[7].x, keypoints[7].y);
@@ -446,7 +448,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
   Vector2D leftKnee = Vector2D(keypoints[13].x, keypoints[13].y);
   Vector2D leftAnkle = Vector2D(keypoints[15].x, keypoints[15].y);
 
-  Vector2D rightEye = Vector2D(keypoints[2].x, keypoints[2].y);
   Vector2D rightEar = Vector2D(keypoints[4].x, keypoints[4].y);
   Vector2D rightShoulder = Vector2D(keypoints[6].x, keypoints[6].y);
   Vector2D rightElbow = Vector2D(keypoints[8].x, keypoints[8].y);
@@ -676,7 +677,6 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
 
   segmentScores['shoulderRaised'] = 0;
   if (shoulderraiseddegree >=30){
-  //  upperArmScore +=1;
    segmentScores['shoulderRaised'] = 1;
   }
 
