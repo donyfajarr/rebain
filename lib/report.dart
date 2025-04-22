@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:merula/main.dart';
 import 'input.dart';
 import 'dart:io';
+import 'dart:async';
 import 'create.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -117,6 +118,9 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
   };
 
   Map<String, int> calculateOverallScore(Map<String, int> scores) {
+    Stopwatch rebaStopwatch = Stopwatch();
+    rebaStopwatch.start();
+  
     // Neck Calculation
     if (scores['neckTwisted'] == 1 || scores['neckBended'] == 1) {
       scores['neckScore'] = (scores['neckScore'] ?? 0) + 1;
@@ -184,13 +188,14 @@ class _RebaReportScreenState extends State<RebaReportScreen> {
     print('rebascoreC : $rebaScoreC');
     print('total reba : $rebaScore');
     // print(widget.side);
+    print(rebaStopwatch.elapsedMilliseconds);
+    rebaStopwatch.stop();
     return {
     'rebaScoreA': rebaScoreA,
     'rebaScoreB': rebaScoreB,
     'rebaScoreC': rebaScoreC,
     'totalReba': rebaScore,
   };
-
   }
   @override
   void initState() {

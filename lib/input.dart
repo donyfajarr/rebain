@@ -405,40 +405,8 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
     print("⚠️ No image selected.");
   }
 }
-
-  Future<void> _predict(File image, String segment, [List<Keypoint>? existingKeypoints]) async {
-    final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
-    List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
-    
-    print('Segment $segment');
-
-    setState(() {
-    _keypointsMap[segment] = keypoints;
-     if (segment.toLowerCase() == "wrist" && existingKeypoints != null) {
-      print('asup');
-      if (existingKeypoints.isNotEmpty) { 
-        print(existingKeypoints[0].x); // Debug: Check the passed keypoints
-        print('✅ Manually added wrist keypoint included');
-
-        // Ensure we append it as the 18th keypoint
-        if (_keypointsMap[segment]!.length == 17) { 
-          _keypointsMap[segment]!.add(existingKeypoints[0]); // ✅ Add manually selected keypoint as the 18th
-        } else {
-          print("⚠️ WARNING: Unexpected keypoint length for wrist.");
-        }
-      } else {
-        print("⚠️ WARNING: No manually selected keypoints provided.");
-      }
-    }
-    
-    print('Keypoint for $segment : ${_keypointsMap[segment]}');
-    if (_keypointsMap[segment] == null || _keypointsMap[segment]!.isEmpty) {
-      print("❌ ERROR: No keypoints detected for segment: $segment");
-      return;
-    }
-  });
-
-  // Konversi Titik Tubuh kedalam Vektor
+  void _angleCalculation (String segment, List<Keypoint> keypoints) {
+    // Konversi Titik Tubuh kedalam Vektor
   Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
   Vector2D leftEar = Vector2D(keypoints[3].x, keypoints[3].y);
   Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
@@ -788,21 +756,474 @@ class _ImagePickerScreenState extends State<ImagePickerScreen> {
       segmentScores['coupling'] = 0;
       
     }
+  }
+  Future<void> _predict(File image, String segment, [List<Keypoint>? existingKeypoints]) async {
+    final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
+    List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
+    
+    print('Segment $segment');
+
+    setState(() {
+    _keypointsMap[segment] = keypoints;
+     if (segment.toLowerCase() == "wrist" && existingKeypoints != null) {
+      print('asup');
+      if (existingKeypoints.isNotEmpty) { 
+        print(existingKeypoints[0].x); // Debug: Check the passed keypoints
+        print('✅ Manually added wrist keypoint included');
+
+        // Ensure we append it as the 18th keypoint
+        if (_keypointsMap[segment]!.length == 17) { 
+          _keypointsMap[segment]!.add(existingKeypoints[0]); // ✅ Add manually selected keypoint as the 18th
+        } else {
+          print("⚠️ WARNING: Unexpected keypoint length for wrist.");
+        }
+      } else {
+        print("⚠️ WARNING: No manually selected keypoints provided.");
+      }
+    }
+    
+    print('Keypoint for $segment : ${_keypointsMap[segment]}');
+    if (_keypointsMap[segment] == null || _keypointsMap[segment]!.isEmpty) {
+      print("❌ ERROR: No keypoints detected for segment: $segment");
+      return;
+    }
+  });
+  _angleCalculation(segment, keypoints);
+//   // Konversi Titik Tubuh kedalam Vektor
+//   Vector2D nose = Vector2D(keypoints[0].x, keypoints[0].y);
+//   Vector2D leftEar = Vector2D(keypoints[3].x, keypoints[3].y);
+//   Vector2D leftShoulder = Vector2D(keypoints[5].x, keypoints[5].y);
+//   Vector2D leftElbow = Vector2D(keypoints[7].x, keypoints[7].y);
+//   Vector2D leftWrist = Vector2D(keypoints[9].x, keypoints[9].y);
+//   Vector2D leftHip = Vector2D(keypoints[11].x, keypoints[11].y);
+//   Vector2D leftKnee = Vector2D(keypoints[13].x, keypoints[13].y);
+//   Vector2D leftAnkle = Vector2D(keypoints[15].x, keypoints[15].y);
+
+//   Vector2D rightEar = Vector2D(keypoints[4].x, keypoints[4].y);
+//   Vector2D rightShoulder = Vector2D(keypoints[6].x, keypoints[6].y);
+//   Vector2D rightElbow = Vector2D(keypoints[8].x, keypoints[8].y);
+//   Vector2D rightWrist = Vector2D(keypoints[10].x, keypoints[10].y);
+//   Vector2D rightHip = Vector2D(keypoints[12].x, keypoints[12].y);
+//   Vector2D rightKnee = Vector2D(keypoints[14].x, keypoints[14].y);
+//   Vector2D rightAnkle = Vector2D(keypoints[16].x, keypoints[16].y);
+  
+//   Vector2D midShoulder = (leftShoulder + rightShoulder) / 2;
+//   Vector2D midHip = (leftHip + rightHip) / 2;
+//   Vector2D midEar = (leftEar + rightEar) /2;
+//   Vector2D virtualY = Vector2D(midHip.x, midHip.y + 50);
+
+//   // Calculate angles
+//   // A. Neck, Trunk, and Leg Analysis
+//   // 1. Locate Neck Position (+1 jika 10-20, +2 jika 20 - infinite, +2 jika negatif infinite - 0)
+//   if (segment.toLowerCase() == "neck") {
+//   int neckScore = 0;
+
+//   // 1️⃣ Calculate Neck Flexion/Extension Score
+//   double neckAngle = 180.0 - PostureCalculator.calculateNeckAngle(midEar, midShoulder, midHip);
+
+//   print('Neck Angle: $neckAngle°');
+  
+
+//   if (neckAngle >= 10 && neckAngle < 20) {
+//     neckScore += 1;
+//   } else if (neckAngle > 20 || neckAngle <= 0) {
+//     neckScore += 2;
+//   }
+
+//   // 2️⃣ Check for Twisting and Bending (Only Add +1 Once)
+//   double neckTwisted = PostureCalculator.calculateNeckTwisted(nose, leftShoulder, rightShoulder);
+//   var neckBend = PostureCalculator.calculateNeckBending(
+//     leftEar, midShoulder, leftShoulder, rightEar, rightShoulder
+//   );
+
+  
+//   print("Neck Bending : $neckBend");
+//   // print("Neck Bending Right : $neckBendingRight");
+//   print("Neck Twisted : $neckTwisted");
+//   // If either twisting or bending exists, add only +1
+//   // double neckBend = (neckBendingLeft - neckBendingRight).abs();
+
+//   segmentScores["neckTwisted"] = 0;
+//   segmentScores["neckBended"] = 0;
+
+//   if (neckTwisted >= 10) {
+//     segmentScores["neckTwisted"] = 1;
+//     }
+//   if (neckBend>= 10) {
+//     segmentScores["neckBended"] = 1;
+//   }
+//   // if (neckTwisted >= 10 || neckBend >= 10) {
+//     // neckScore += 1;
+//   // };
+
+//   if (!_anglesMap.containsKey(segment)) {
+//   _anglesMap[segment] = {};
+// }
+
+// // Add Neck Twisting and Bending to the _anglesMap
+//   _anglesMap[segment]!["Neck Angle"] = [neckAngle];
+//   _anglesMap[segment]!["Neck Twist"] = [neckTwisted];
+//   _anglesMap[segment]!["Neck Bending"] = [neckBend];
+
+  
+//   segmentScores["neckScore"] = neckScore;
+//   print('Total Neck Score: $neckScore');
+// }
+
+//   // 2. Locate Trunk Position (+1 jika 0, +2 jika -infinite - 0, +2 jika 0 - 20, +3 jika 20 - 60, +4 jika 60 - infinite)
+//   if (segment.toLowerCase() == "trunk") {
+//   int trunkScore = 0;
+
+//   // Calculate Trunk Flexion/Extension Score
+//   double trunkFlexion = 180.0 - PostureCalculator.calculateTrunkFlexion(virtualY, midHip, midShoulder);
+//   print('Trunk Flexion Angle: $trunkFlexion');
+
+//    if (trunkFlexion >= -5 && trunkFlexion <= 5) {
+//     trunkScore += 1;
+//   } else if (trunkFlexion < -5) {
+//     trunkScore += 2;
+//   } else if (trunkFlexion > 5 && trunkFlexion <= 20) {
+//     trunkScore += 2;
+//   } else if (trunkFlexion > 20 && trunkFlexion <= 60) {
+//     trunkScore += 3;
+//   } else if (trunkFlexion > 60) {
+//     trunkScore += 4;
+//   }
+ 
+//   // 2️⃣ Check for Twisting and Bending (Only Add +1 Once)
+//   double trunkTwisting = PostureCalculator.calculateTrunkTwisting(
+//     rightShoulder, midHip, rightHip, leftShoulder, leftHip
+//   );
+//   var (leftBending, rightBending) = PostureCalculator.calculateTrunkBending(
+//     rightHip, midHip, midShoulder, leftHip
+//   );
+
+//   print('Trunk Twisting Angle: $trunkTwisting');
+//   print('Trunk Bending Left Angle: $leftBending');
+//   print('Trunk Bending Right Angle: $rightBending');
+
+//   double trunkBend = max(leftBending, rightBending);
+//   segmentScores["trunkTwisted"] = 0;
+//   segmentScores["trunkBended"] = 0;
+//   // Initialize trunkScore
+//   if (trunkTwisting >= 100) {
+//     segmentScores["trunkTwisted"] = 1;
+//     // trunkScore += 1;
+//   }
+//   if (leftBending <= 85 || leftBending >= 95 || rightBending <= 85 || rightBending >= 95) {
+//     segmentScores["trunkBended"] = 1;
+//     // trunkScore += 1;
+//   }
+
+//   if (!_anglesMap.containsKey(segment)) {
+//   _anglesMap[segment] = {};
+// }
+
+
+//   _anglesMap[segment]!["Trunk Angle"] = [trunkFlexion];
+//   _anglesMap[segment]!["Trunk Twist"] = [trunkTwisting];
+//   _anglesMap[segment]!["Trunk Bending"] = [trunkBend];
+
+
+
+
+//   // 3️⃣ Store Final Trunk Score
+//   segmentScores["trunkScore"] = trunkScore;
+ 
+//   print('Total Trunk Score: $trunkScore');
+// }
+ 
+//   // 3. Legs (+1 jika -5 - 5, +2 jika 5-infinite, +1 jika 30-60, +2 jika 60-infinite)
+
+//   if (segment.toLowerCase() == "legs & posture"){
+//   int legScore = 0;
+
+//   var(leftLegs, rightLegs) = PostureCalculator.calculateLegs(leftHip, leftKnee, leftAnkle, rightHip, rightKnee, rightAnkle);
+//   double legs = 0;
+//   if (segmentSide[segment] == "Left"){
+//     legs = leftLegs;
+//     _anglesMap[segment] = {
+//         "Legs & Posture": [leftLegs]
+//       };
+//   }
+//   else {
+//     legs = rightLegs;
+//     _anglesMap[segment] = {
+//       "Legs & Posture" : [rightLegs]
+//     };
+//   }
+//   print('Leg Angle $leftLegs');
+//   print('RLeg Angle $rightLegs');
+  
+    
+//   if (legs >=30 && legs<=60){
+//     legScore +=1;
+//   } else if (legs >60){
+//     legScore +=2;
+//   }
+
+//     // Calculate Total Legs Score 
+//     segmentScores['legRaised'] = 1;
+//     segmentScores['legScore'] = legScore;
+//     print('Total Leg Score : $legScore');
+//   }
+
+//   // B. Arm and Wrist Analysis
+//   // 7. Locate Upper Arm Position (+1 jika -20 -20, +2 jika -infinite - -20, +2 jika 20-45, +3 jika 45-90, +4 jika 90 - infinite)
+//   if (segment.toLowerCase() == "upper arm"){
+//   int upperArmScore = 0;
+//   double selectedUpper = 0;
+  
+
+//   var (leftUpperArmAngle, rightupperArmAngle) = PostureCalculator.calculateUpperArmAngle(
+//     leftElbow, leftShoulder, leftHip,
+//     rightElbow, rightShoulder, rightHip,
+//   );
+//   print('Left Upper Arm Angle: $leftUpperArmAngle°');
+//   print('Right Upper Arm Angle: $rightupperArmAngle');
+
+//   if(segmentSide[segment] == "Left"){
+//     selectedUpper = leftUpperArmAngle;
+
+//    if (leftUpperArmAngle >= -20 && leftUpperArmAngle <= 20){
+//       upperArmScore += 1;
+//     }
+//     else if (rightupperArmAngle <-20){
+//       upperArmScore +=2;
+//     }
+//     else if (leftUpperArmAngle>20 && leftUpperArmAngle<=45){
+//       upperArmScore +=2;
+//     }
+//     else if (leftUpperArmAngle>45 && leftUpperArmAngle <= 90){
+//       upperArmScore +=3;
+//     }
+//     else if (leftUpperArmAngle > 90){
+//       upperArmScore +=4;
+//     }
+//   }
+//   else{
+//     selectedUpper = rightupperArmAngle;
+
+//     if (rightupperArmAngle >= -20 && rightupperArmAngle <= 20){
+//       upperArmScore += 1;
+//     }
+//     else if (rightupperArmAngle <-20){
+//       upperArmScore +=2;
+//     }
+//     else if (rightupperArmAngle>20 && rightupperArmAngle<=45){
+//       upperArmScore +=2;
+//     }
+//     else if (rightupperArmAngle>45 && rightupperArmAngle <= 90){
+//       upperArmScore +=3;
+//     }
+//     else if (rightupperArmAngle > 90){
+//       upperArmScore +=4;
+//     }
+//   }
+
+//   // 7.1 If shoulder is raised +1 >30
+//   var shoulderraiseddegree = PostureCalculator.calculateShoulderRaised(leftShoulder, rightShoulder);
+
+//   print('Shoulder Raised: $shoulderraiseddegree');
+
+//   segmentScores['shoulderRaised'] = 0;
+//   if (shoulderraiseddegree >=30){
+//    segmentScores['shoulderRaised'] = 1;
+//   }
+
+//   // 7.2 If upper arm is abducted +1 >110
+//   var (leftUpperArmAbducted, rightUpperArmAbducted) = PostureCalculator.calculateUpperArmAbducted(leftShoulder, leftElbow, midShoulder, rightShoulder, rightElbow);
+  
+//   print('Left Upper Arm Abducted : $leftUpperArmAbducted');
+//   print('Right Upper Arm Abducted : $rightUpperArmAbducted');
+//   segmentScores['upperArmAbducted'] = 0;
+//   segmentScores['armSupport'] = 0;
+//   if (max(leftUpperArmAbducted, rightUpperArmAbducted) >=110){
+//     // upperArmScore +=1;
+//     segmentScores['upperArmAbducted'] = 1;
+//   }
+  
+//     if (!_anglesMap.containsKey(segment)) {
+//   _anglesMap[segment] = {};
+// }
+
+
+//   _anglesMap[segment]!["Upper Arm Angle"] = [selectedUpper];
+//   _anglesMap[segment]!["Shoulder Raised"] = [shoulderraiseddegree];
+//   _anglesMap[segment]!["Shoulder Abducted"] = [max(leftUpperArmAbducted, rightUpperArmAbducted)];
+
+
+//   segmentScores ['upperArmScore'] = upperArmScore;
+//   print('Total Upper Arm Score: $upperArmScore');
+
+//   // Calculate Total Upper Arm Score
+//   }
+//   // 8. Locate Lower Arm Position (+1 jika 60-100, +2 jika -infinite - 60 + 2 jika 100 - infinite)
+//   if (segment.toLowerCase() == "lower arm") {
+//   int lowerArmScore = 0;
+//   var (leftLowerArmAngle, rightLowerArmAngle) = PostureCalculator.calculateLowerArmAngle(
+//     leftElbow, leftWrist, leftShoulder,
+//     rightElbow, rightWrist, rightShoulder,
+//   );
+//   leftLowerArmAngle = 180.0 - leftLowerArmAngle;
+//   rightLowerArmAngle = 180.0 - rightLowerArmAngle;
+
+//   print('Left Lower Arm Angle: $leftLowerArmAngle°');
+//   print('Right Lower Arm Angle: $rightLowerArmAngle°');
+  
+
+//   if (segmentSide[segment] == "Left"){
+//     _anglesMap[segment] = {
+//       "Lower Arm": [leftLowerArmAngle],
+//     };
+
+//     if (leftLowerArmAngle >= 60 && leftLowerArmAngle <= 100) {
+//       lowerArmScore += 1;
+//     } else if (leftLowerArmAngle < 60) {
+//       lowerArmScore += 2;
+//     } else if (leftLowerArmAngle > 100) {
+//       lowerArmScore += 2;
+//     }
+//   }
+//   else {
+//     _anglesMap[segment] = {
+//       "Lower Arm": [rightLowerArmAngle],
+//     };
+
+//     if (rightLowerArmAngle >= 60 && rightLowerArmAngle <= 100) {
+//       lowerArmScore += 1;
+//     } else if (rightLowerArmAngle < 60) {
+//       lowerArmScore += 2;
+//     } else if (rightLowerArmAngle > 100) {
+//       lowerArmScore += 2;
+//     }
+//   }
+
+  
+
+//   // Calculate Total Lower Arm Score
+//   segmentScores ['lowerArmScore'] = lowerArmScore;
+//   print('Total Lower Arm Score: $lowerArmScore');
+
+//   }
+//   // 9. Locate Wrist Position (+1 jika -15 - 15, +2 jika 15 - infinite, +2 jika -infinite - -15)
+
+//     if (segment.toLowerCase() == 'wrist'){
+//       Vector2D chosen = Vector2D(keypoints[17].x, keypoints[17].y);
+//       double wristAngle = 0.0;
+//       if (segmentSide[segment] == "Left"){
+//         wristAngle = 180.0 - PostureCalculator.calculateWristAngle(leftWrist, leftElbow, chosen);
+//       }
+//       else {
+//         wristAngle = 180.0 - PostureCalculator.calculateWristAngle(rightWrist, rightElbow, chosen);
+//       }
+      
+      
+//       print('Wrist Angle: $wristAngle');
+//       _anglesMap[segment] = {
+//           "Wrist": [wristAngle],
+//         };
+
+//       int wristScore = 0;
+//       if (wristAngle >=-15 && wristAngle <=15){
+//         wristScore +=1;
+//       } else if (wristAngle <-15 || wristAngle >15){
+//         wristScore +=2;
+//       }
+//       segmentScores['wristScore'] = wristScore;
+//       print('Total Wrist Score: $wristScore');
+//       segmentScores['activityScore'] = 0;
+//       segmentScores['unstableBase'] = 0;
+//       segmentScores['staticPosture'] = 0;
+//       segmentScores['repeatedAction'] = 0;
+//       segmentScores['coupling'] = 0;
+      
+//     }
     }
 
-  void _submitAndProcess() async {
-  if (_selectedSide == null) {
-    return;
-  }
+// void _submitAndProcess() async {
+//   if (_selectedSide == null) {
+//     return;
+//   }
+
+//   // Stopwatch untuk mengukur total waktu pemrosesan
+//   Stopwatch totalStopwatch = Stopwatch();
+//   totalStopwatch.start();
+
+//   // Map untuk menyimpan waktu tiap segmen
+//   Map<String, int> segmentTimes = {};
+
+//   // Loop untuk memproses setiap segmen
+//   for (String segment in ["Neck", "Trunk", "Legs & Posture", "Upper Arm", "Lower Arm"]) {
+//     if (_capturedImages[segment] != null) {
+//       // Stopwatch untuk menghitung waktu per segmen
+//       Stopwatch segmentStopwatch = Stopwatch();
+//       segmentStopwatch.start();
+
+//       // Proses prediksi untuk setiap segmen
+//       await _predict(_capturedImages[segment]!, segment, []);
+
+//       // Stop stopwatch untuk segmen ini dan simpan hasilnya
+//       segmentStopwatch.stop();
+//       segmentTimes[segment] = segmentStopwatch.elapsedMilliseconds;
+//     }
+//   }
+
+//   // Stop stopwatch total
+//   totalStopwatch.stop();
+
+//   // Cetak hasil waktu pemrosesan
+//   print('--- Performance Summary ---');
+//   print('Total time for all segments: ${totalStopwatch.elapsedMilliseconds} ms');
+//   segmentTimes.forEach((segment, time) {
+//     print('$segment: $time ms');
+//   });
+
+//   // Panggil fungsi untuk lanjut ke segmen berikutnya
+//   _nextSegment();
+// }
+Future<void> _predictOnceForAllSegments(File image) async {
+  final imageInput = image_lib.decodeImage(image.readAsBytesSync())!;
+  List<Keypoint> keypoints = await _moveNetClassifier.processAndRunModel(imageInput);
 
   for (String segment in ["Neck", "Trunk", "Legs & Posture", "Upper Arm", "Lower Arm"]) {
     if (_capturedImages[segment] != null) {
-      await _predict(_capturedImages[segment]!, segment, []);
+      setState(() {
+        _keypointsMap[segment] = List<Keypoint>.from(keypoints);
+      });
+      _angleCalculation(segment, keypoints);
+    }
+  }
+}
+
+void _submitAndProcess() async {
+  if (_selectedSide == null) return;
+   // Stopwatch untuk mengukur total waktu pemrosesan
+  Stopwatch totalStopwatch = Stopwatch();
+  totalStopwatch.start();
+
+  // Step 1: Get the first available image
+  File? firstAvailableImage;
+  for (String segment in ["Neck", "Trunk", "Legs & Posture", "Upper Arm", "Lower Arm"]) {
+    if (_capturedImages[segment] != null) {
+      firstAvailableImage = _capturedImages[segment];
+      break;
     }
   }
 
+  if (firstAvailableImage == null) return; // No image available
+
+  await _predictOnceForAllSegments(firstAvailableImage);
+    totalStopwatch.stop();
+
+//   // Cetak hasil waktu pemrosesan
+  print('--- Performance Summary ---');
+  print('Total time for all segments: ${totalStopwatch.elapsedMilliseconds} ms');
+
+  // (Optional) you can calculate angle-specific logic here for each segment, OR in a separate pass
   _nextSegment();
 }
+
 
   void _nextSegment() {
     if (_currentStep < _bodySegments.length - 1) {
